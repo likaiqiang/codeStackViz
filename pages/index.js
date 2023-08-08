@@ -1,12 +1,15 @@
 import {useEffect, useRef, useState} from "react";
 import ReactDOM from "react-dom";
-import {genreateDotStr, genreateSvg} from "@/pages/cf";
+import {generateCode, genreateDotStr} from "@/pages/cf";
 import Graphviz from "@/components/Graphviz";
+import CodeEditor from '@/components/Editor'
 import CustomPopper from "@/components/Popper";
 import Whether from "@/components/Whether";
 
 export default function Home() {
   const [dot,setDot] = useState(null)
+  const [nodes,setNodes] = useState({})
+  const [code,setCode] = useState('')
   useEffect(() => {
     const controller = new AbortController()
     const filename = 'url-loader'
@@ -18,9 +21,9 @@ export default function Home() {
       signal: controller.signal
     }).then(res=>res.json()).then(({bundle})=>{
       return genreateDotStr({code:bundle,filename})
-    }).then((dot)=>{
-      console.log('dot',dot);
+    }).then(({dot,nodes})=>{
       setDot(dot)
+      setNodes(nodes)
     })
     return ()=>{
       controller.abort()
@@ -30,10 +33,31 @@ export default function Home() {
 
   const popperRef = useRef()
   return (
-      <div>
+      <div className={'codeViewContainer'}>
         <Whether value={dot}>
-          <Graphviz dot={dot} popper={popperRef}/>
+          <Graphviz
+              className={'codeSvg'}
+              dot={dot}
+              popper={popperRef}
+              onNodeClick={({id})=>{
+                for(let key in nodes){
+                    const {attrs} = nodes[key]
+                    if(attrs.id === id) {
+                        setCode(
+                            generateCode(nodes[key].node.path)
+                        )
+                        break
+                    }
+                }
+              }}
+          />
         </Whether>
+        <div className={'codeView'}>
+          <CodeEditor value={code}/>
+          <div className={'codeExplainText'}>
+
+          </div>
+        </div>
           {
               ReactDOM.createPortal(
                   <CustomPopper ref={popperRef}/>,

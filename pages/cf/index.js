@@ -1,5 +1,6 @@
 const {parse} = require('@babel/parser')
 const traverse = require('@babel/traverse').default;
+const generate = require('@babel/generator').default
 const t = require('@babel/types')
 const Viz = require('@viz-js/viz')
 
@@ -25,6 +26,10 @@ const getAst = ({code,filename})=>{
         filename
     }
     return ast
+}
+
+export const generateCode = (path)=>{
+    return generate(path.node).code
 }
 
 
@@ -65,10 +70,11 @@ function parseDotJson(options){
         }, 'node [')
         str += ']'
     }
+    let nodes = {}
     if(statements.length){
-        const nodes = collectNodesFromEdges(statements)
+        nodes = collectNodesFromEdges(statements)
         str += Object.keys(nodes).reduce((acc,key)=>{
-            const attrs = nodes[key]
+            const attrs = nodes[key].attrs
             acc += `\n"${key}" [`
             for(let k in attrs){
                 acc += `"${k}"="${attrs[k]}"`
@@ -88,7 +94,11 @@ function parseDotJson(options){
             return acc += '\n' + stmp
         },'')
     }
-    return str + '\n}'
+    return {
+        dot: str + '\n}',
+        dotJson: options,
+        nodes
+    }
 }
 
 
@@ -143,10 +153,10 @@ const collectNodesFromEdges = (edges = [])=>{
     return edges.reduce((acc,item)=>{
         const {head,tail} = item
         if(!(head.text in acc)){
-            acc[head.text] = {id: generateRandomId()}
+            acc[head.text] = {node: head,attrs:{id: generateRandomId()}}
         }
         if(!(tail.text in acc)){
-            acc[tail.text] = {id: generateRandomId()}
+            acc[tail.text] = {node: tail, attrs: {id: generateRandomId()}}
         }
         return acc
     },{})

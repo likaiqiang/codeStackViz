@@ -25,3 +25,32 @@ body {
     )
     rgb(var(--background-start-rgb));
 }
+
+.adm-popover-inner{
+  background-color: #fff;
+  border-radius: 4px;
+  border: 1px solid;
+}
+.adm-popover-menu-item{
+  align-items: center;
+  display: flex;
+  justify-content: flex-start;
+  padding-left: 20px;
+  position: relative;
+}
+.adm-plain-anchor{
+  color: inherit;
+  transition: none;
+}
+.adm-popover-menu-item-text{
+  flex: auto;
+  padding: 14px 20px 14px 0;
+}
+.codeViewContainer{
+  padding: 10px 10px 0;
+}
+.codeView{
+  display: flex;
+  padding: 10px 0;
+}
+
