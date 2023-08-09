@@ -27,7 +27,8 @@ const Graphviz = (props) => {
             const perentEle = e.target.parentElement
             if(perentEle?.classList.contains('node')){
                 onNodeClick({
-                    id: perentEle.getAttribute('id')
+                    id: perentEle.getAttribute('id'),
+                    text: Array.from(perentEle.children).find(tag=>tag.tagName === 'title').textContent
                 })
             }
         }

@@ -10,9 +10,9 @@ const external = require('@yelo/rollup-node-external') // 避免打包npm依赖
 // const {__dirname,__filename} = getGlobals(import.meta.url)
 
 module.exports = {
-    input: path.join(__dirname,'./resources/src/url-loader/index.js'), // 入口文件
+    input: path.join(__dirname,'./resources/src/babel-loader/index.js'), // 入口文件
     output: {
-        file: path.join(__dirname,'./resources/output/url-loader-bundle.js'), // 输出文件
+        file: path.join(__dirname,'./resources/output/babel-loader/bundle.js'), // 输出文件
         // file: path.join(__dirname,'./demo/url-loader/bundle.js'),
         format: "es", // 输出格式，支持 amd, cjs, es, iife, umd 等
         // name: "MyLibrary", // 输出的全局变量名，仅适用于 iife 和 umd 格式

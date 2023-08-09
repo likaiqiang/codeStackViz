@@ -2,8 +2,6 @@ const {parse} = require('@babel/parser')
 const traverse = require('@babel/traverse').default;
 const generate = require('@babel/generator').default
 const t = require('@babel/types')
-const Viz = require('@viz-js/viz')
-
 // const DOMParser = require('xmldom').DOMParser;
 // global.DOMParser = DOMParser
 
@@ -17,6 +15,9 @@ function generateRandomId() {
     return '_' + Math.random().toString(36).substr(2, 9);
 }
 
+const selectNodeConfig = {
+    color:'red'
+}
 
 const getAst = ({code,filename})=>{
     const ast = parse(code,{
@@ -32,35 +33,86 @@ export const generateCode = (path)=>{
     return generate(path.node).code
 }
 
+function filterNodesByEntry(options, entryFunctionName) {
+    const {statements: nodes} = options
+    const relatedNodes = new Set(); // 用 Set 来存储相关节点
+    function findRelatedNodes(entry) {
+        nodes.forEach(node => {
+            if (node.head.text === entry) {
+                relatedNodes.add(node);
+                findRelatedNodes(node.tail.text); // 递归查找下一级相关节点
+            }
+        });
+    }
 
+    findRelatedNodes(entryFunctionName);
 
-async function dotToJson(dotStr) {
-    return Viz.instance().then(viz=>{
-        return viz.renderString(dotStr,{format: "json0"})
-    })
+    return {
+        ...options,
+        statements: nodes.filter(node => relatedNodes.has(node))
+    }
+
 }
 
-export function genreateSvg({code, filename}){
-    const ast = getAst({code,filename})
-    const dotJson = genreateDot(ast)
-    const dotStr = parseDotJson(dotJson)
-    console.log(dotStr);
-    return Viz.instance().then(function(viz) {
-        return {
-            svg: viz.renderSVGElement(dotStr),
-            dot: dotStr
+function calculateLevels(data,entryFuncName) {
+    const levels = {}; // 用于存储每个元素的层级
+
+    function calculateElementLevel(element, currentLevel) {
+        const head = element.head.text;
+        const tail = element.tail.text;
+
+        // 如果头部在 levels 中尚未记录，则初始化为当前层级
+        if (!levels[head]) {
+            levels[head] = currentLevel;
         }
+
+        // 更新尾部的层级为头部层级 + 1
+        levels[tail] = levels[head] + 1;
+
+        // 递归计算下一个元素的层级
+        const nextElement = data.find(e => e.head === tail);
+        if (nextElement) {
+            calculateElementLevel(nextElement, levels[tail]);
+        }
+    }
+
+    // 找到起始元素并开始计算
+    // const startingElements = data.filter(e => !data.some(el => el.tail === e.head));
+
+    const startingElements = data.filter(e=>e.head.text === entryFuncName)
+
+    startingElements.forEach(startingElement => {
+        calculateElementLevel(startingElement, 1);
+    });
+
+    return data.map(element => ({
+        ...element,
+        level: levels[element.head.text] // 将计算得到的层级添加到元素对象中
+    }));
+}
+
+export const generateDotStr = ({ast,entryFuncName,selectNodeText})=>{
+    const filteredDotJson = filterNodesByEntry(
+        genreateDot(ast),
+        entryFuncName
+    )
+    // const levels = calculateLevels(dotJson.statements,entryFunc)
+    // console.log('levels',levels);
+    return parseDotJson({
+        options: filteredDotJson,
+        selectNodeText: selectNodeText
     })
 }
 
-export const genreateDotStr = ({code, filename})=>{
-    const ast = getAst({code,filename})
-    const dotJson = genreateDot(ast)
-    return parseDotJson(dotJson)
+
+export const genreateDotStrByCode = ({code, filename,entryFuncName})=>{
+    const ast =  astCache[filename] || (astCache[filename] = getAst({code,filename}))
+
+    return generateDotStr({ast,entryFuncName,selectNodeText: entryFuncName})
 }
 
 
-function parseDotJson(options){
+export function parseDotJson({options,selectNodeText}){
     const {node = {},statements=[]} = options
     // node  ["fillcolor"="#eeeeee", "style"="filled,rounded", "shape"="rect"];
     let str = 'digraph G {\n'
@@ -70,12 +122,17 @@ function parseDotJson(options){
         }, 'node [')
         str += ']'
     }
-    let nodes = {}
+    let nodes = {}, selectNode = {}
     if(statements.length){
-        nodes = collectNodesFromEdges(statements)
+        const drafh = collectNodesFromEdges({
+            edges: statements,
+            selectNodeText
+        })
+        nodes = drafh.nodes
+        selectNode = drafh.selectNode
         str += Object.keys(nodes).reduce((acc,key)=>{
             const attrs = nodes[key].attrs
-            acc += `\n"${key}" [`
+            acc += `\n"${nodes[key].text}" [`
             for(let k in attrs){
                 acc += `"${k}"="${attrs[k]}"`
             }
@@ -97,20 +154,21 @@ function parseDotJson(options){
     return {
         dot: str + '\n}',
         dotJson: options,
-        nodes
+        nodes,
+        selectNode
     }
 }
+
+export const dotCache = {}
+
+export const astCache = {}
 
 
 function genreateDot(ast){
     // let dot = "digraph G {\n";
     const dotJson = {
         node: {fillcolor: "#eeeeee", style: "filled,rounded", shape: "rect"},
-        // styles:
-        // {
-        //     selected: {fillcolor: "#bbccff:#ddeeff"},
-        //     depends: {label: "depends", style: "dashed", arrowhead: "open"}
-        // },
+
         statements:[]
     }
     traverse(ast,{
@@ -134,11 +192,13 @@ function genreateDot(ast){
                 dotJson.statements.push({
                     head:{
                         text:parentFunc.node.id.name,
-                        path: parentFunc
+                        path: parentFunc,
+                        attrs:{}
                     },
                     tail:{
                         text:callName,
-                        path
+                        path: binding.path,
+                        attrs:{}
                     },
                     attributes:{}
                 })
@@ -149,16 +209,56 @@ function genreateDot(ast){
     return dotJson
 }
 
-const collectNodesFromEdges = (edges = [])=>{
-    return edges.reduce((acc,item)=>{
-        const {head,tail} = item
-        if(!(head.text in acc)){
-            acc[head.text] = {node: head,attrs:{id: generateRandomId()}}
-        }
-        if(!(tail.text in acc)){
-            acc[tail.text] = {node: tail, attrs: {id: generateRandomId()}}
-        }
-        return acc
-    },{})
+function setToObject(inputSet,getKey = (value,index)=>`key${index}`) {
+    const convertedObject = {};
+
+    inputSet.forEach((value,index) => {
+        const key = getKey(value,index); // 使用索引作为键
+        convertedObject[key] = value;
+    });
+
+    return convertedObject;
 }
+
+function collectNodesFromEdges({edges,selectNodeText}) {
+    const collectedNodes = new Set(); // 使用 Set 来避免重复添加节点
+    let selectNode = null
+    edges.forEach(edge => {
+        collectedNodes.add(edge.head);
+        collectedNodes.add(edge.tail);
+    });
+    const nodes = setToObject(collectedNodes,(value)=>value.text)
+    for(let text in nodes){
+        if(selectNodeText && text === selectNodeText){
+            nodes[text].attrs.color = selectNodeConfig.color
+            selectNode = nodes[text]
+        }
+    }
+    return {
+        nodes,
+        selectNode
+    }
+}
+
+// const collectNodesFromEdges = (edges = [],selectNodeText)=>{
+//     let selectNode = null
+//     const nodes = edges.reduce((acc, item, i) => {
+//         const {head, tail} = item
+//         if (!(head.text in acc)) {
+//             acc[head.text] = {node: head, attrs: {id: generateRandomId()}, index: i}
+//             if(selectNodeText && head.text === selectNodeText) {
+//                 acc[head.text].attrs.color = selectNodeConfig.color
+//                 selectNode = head
+//             }
+//         }
+//         if (!(tail.text in acc)) {
+//             acc[tail.text] = {node: tail, attrs: {id: generateRandomId()}, index: i}
+//         }
+//         return acc
+//     }, {})
+//     return {
+//         nodes,
+//         selectNode
+//     }
+// }
 
