@@ -1,6 +1,6 @@
-const babel = require("@babel/core");
+import babel from '@babel/core' ;
 
-module.exports = function injectCaller(opts, target) {
+export default function injectCaller(opts, target) {
   if (!supportsCallerOption()) return opts;
 
   return Object.assign({}, opts, {

@@ -1,24 +1,14 @@
-import require$$1$2 from '../package.json';
-import require$$0$1 from 'os';
-import require$$1$1 from 'path';
-import require$$2 from 'zlib';
-import require$$3 from 'crypto';
-import require$$1 from 'util';
-import require$$5$1 from 'fs/promises';
-import require$$0 from '@babel/core';
-import require$$7 from 'schema-utils';
+import babel from '@babel/core';
+import os from 'os';
+import path, { isAbsolute } from 'path';
+import zlib from 'zlib';
+import crypto from 'crypto';
+import { promisify } from 'util';
+import { mkdir, readFile, writeFile } from 'fs/promises';
+import findCacheDirP from 'find-cache-dir';
+import { validate } from 'schema-utils';
 
-function getDefaultExportFromCjs (x) {
-	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
-}
-
-function commonjsRequire(path) {
-	throw new Error('Could not dynamically require "' + path + '". Please configure the dynamicRequireTargets or/and ignoreDynamicRequires option of @rollup/plugin-commonjs appropriately for this require call to work.');
-}
-
-var babelLoader = {exports: {}};
-
-var transform$3 = {exports: {}};
+var version = "9.1.3";
 
 const STRIP_FILENAME_RE = /^[^:]+: /;
 
@@ -38,7 +28,7 @@ const format = err => {
   return err;
 };
 
-let LoaderError$1 = class LoaderError extends Error {
+class LoaderError extends Error {
   constructor(err) {
     super();
 
@@ -52,20 +42,14 @@ let LoaderError$1 = class LoaderError extends Error {
 
     Error.captureStackTrace(this, this.constructor);
   }
-};
+}
 
-var _Error = LoaderError$1;
+const transform = promisify(babel.transform);
 
-const babel$2 = require$$0;
-const { promisify: promisify$1 } = require$$1;
-const LoaderError = _Error;
-
-const transform$2 = promisify$1(babel$2.transform);
-
-transform$3.exports = async function (source, options) {
+async function transform$1 (source, options) {
   let result;
   try {
-    result = await transform$2(source, options);
+    result = await transform(source, options);
   } catch (err) {
     throw err.message && err.codeFrame ? new LoaderError(err) : err;
   }
@@ -92,11 +76,8 @@ transform$3.exports = async function (source, options) {
     // Convert it from a Set to an Array to make it JSON-serializable.
     externalDependencies: Array.from(externalDependencies || []),
   };
-};
-
-transform$3.exports.version = babel$2.version;
-
-var transformExports = transform$3.exports;
+}
+babel.version;
 
 /**
  * Filesystem Cache
@@ -107,16 +88,6 @@ var transformExports = transform$3.exports;
  * @see https://github.com/babel/babel-loader/issues/34
  * @see https://github.com/babel/babel-loader/pull/41
  */
-
-const os = require$$0$1;
-const path = require$$1$1;
-const zlib = require$$2;
-const crypto = require$$3;
-const { promisify } = require$$1;
-const { readFile, writeFile, mkdir } = require$$5$1;
-const findCacheDirP = import('find-cache-dir');
-
-const transform$1 = transformExports;
 // Lazily instantiated when needed
 let defaultCacheDirectory = null;
 
@@ -263,7 +234,7 @@ const handleCache = async function (directory, params) {
  *   });
  */
 
-var cache$1 = async function (params) {
+async function cache (params) {
   let directory;
 
   if (typeof params.cacheDirectory === "string") {
@@ -279,11 +250,9 @@ var cache$1 = async function (params) {
   }
 
   return await handleCache(directory, params);
-};
+}
 
-const babel$1 = require$$0;
-
-var injectCaller$1 = function injectCaller(opts, target) {
+function injectCaller(opts, target) {
   if (!supportsCallerOption()) return opts;
 
   return Object.assign({}, opts, {
@@ -307,8 +276,7 @@ var injectCaller$1 = function injectCaller(opts, target) {
       opts.caller,
     ),
   });
-};
-
+}
 // TODO: We can remove this eventually, I'm just adding it so that people have
 // a little time to migrate to the newer RCs of @babel/core without getting
 // hard-to-diagnose errors about unknown 'caller' options.
@@ -318,7 +286,7 @@ function supportsCallerOption() {
     try {
       // Rather than try to match the Babel version, we just see if it throws
       // when passed a 'caller' flag, and use that to decide if it is supported.
-      babel$1.loadPartialConfig({
+      babel.loadPartialConfig({
         caller: undefined,
         babelrc: false,
         configFile: false,
@@ -358,23 +326,11 @@ var properties = {
 	}
 };
 var additionalProperties = true;
-var require$$5 = {
+var schema = {
 	type: type,
 	properties: properties,
 	additionalProperties: additionalProperties
 };
-
-let babel;
-try {
-  babel = require("@babel/core");
-} catch (err) {
-  if (err.code === "MODULE_NOT_FOUND") {
-    err.message +=
-      "\n babel-loader@9 requires Babel 7.12+ (the package '@babel/core'). " +
-      "If you'd like to use Babel 6.x ('babel-core'), you should install 'babel-loader@7'.";
-  }
-  throw err;
-}
 
 // Since we've got the reverse bridge package at @babel/core@6.x, give
 // people useful feedback if they try to use it alongside babel-loader.
@@ -385,23 +341,15 @@ if (/^6\./.test(babel.version)) {
   );
 }
 
-const { version } = require$$1$2;
-const cache = cache$1;
-const transform = transformExports;
-const injectCaller = injectCaller$1;
-const schema = require$$5;
-
-const { isAbsolute } = require$$1$1;
-const validateOptions = require$$7.validate;
-
 function subscribe(subscriber, metadata, context) {
   if (context[subscriber]) {
     context[subscriber](metadata);
   }
 }
 
-babelLoader.exports = makeLoader();
-var custom = babelLoader.exports.custom = makeLoader;
+var index = makeLoader();
+
+const custom = makeLoader;
 
 function makeLoader(callback) {
   const overrides = callback ? callback(babel) : undefined;
@@ -421,7 +369,7 @@ async function loader(source, inputSourceMap, overrides) {
   const filename = this.resourcePath;
 
   let loaderOptions = this.getOptions();
-  validateOptions(schema, loaderOptions, {
+  validate(schema, loaderOptions, {
     name: "Babel loader",
   });
 
@@ -444,7 +392,7 @@ async function loader(source, inputSourceMap, overrides) {
       );
     }
 
-    let override = commonjsRequire(loaderOptions.customize);
+    let override = require(loaderOptions.customize);
     if (override.__esModule) override = override.default;
 
     if (typeof override !== "function") {
@@ -542,7 +490,7 @@ async function loader(source, inputSourceMap, overrides) {
       cacheDirectory = null,
       cacheIdentifier = JSON.stringify({
         options,
-        "@babel/core": transform.version,
+        "@babel/core": transform$1.version,
         "@babel/loader": version,
       }),
       cacheCompression = true,
@@ -554,13 +502,13 @@ async function loader(source, inputSourceMap, overrides) {
       result = await cache({
         source,
         options,
-        transform,
+        transform: transform$1,
         cacheDirectory,
         cacheIdentifier,
         cacheCompression,
       });
     } else {
-      result = await transform(source, options);
+      result = await transform$1(source, options);
     }
 
     config.files.forEach(configFile => this.addDependency(configFile));
@@ -590,8 +538,5 @@ async function loader(source, inputSourceMap, overrides) {
   // If the file was ignored, pass through the original content.
   return [source, inputSourceMap];
 }
-
-var babelLoaderExports = babelLoader.exports;
-var index = /*@__PURE__*/getDefaultExportFromCjs(babelLoaderExports);
 
 export { custom, index as default };

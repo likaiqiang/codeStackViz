@@ -12,10 +12,9 @@ import Graphviz from "@/components/Graphviz";
 import CodeEditor from '@/components/Editor'
 import CustomPopper from "@/components/Popper";
 import Whether from "@/components/Whether";
-import BeatLoader from "react-spinners/BeatLoader";
 import {useImmer} from "use-immer";
-import ReactMarkdown from "react-markdown";
-
+import Chat from "@/components/Chat";
+import hotkeys from 'hotkeys-js';
 export default function Home() {
 
   const [dot,setDot] = useState(null)
@@ -29,6 +28,7 @@ export default function Home() {
       dotJson:{},
       additional:{}
   })
+    const selectCodeRef = useRef('')
     const renderDot = ({dot,nodes,dotJson})=>{
         console.log('dot',dot);
         setDot(dot)
@@ -61,19 +61,34 @@ export default function Home() {
     }
   }, []);
 
-  const onCodeExplain = (promise)=>{
-    setExplain(draft => {
-        draft.loading = true
-    })
-    promise.then((text)=>{
-        setExplain(draft=>{
-            draft.text = text
-            draft.loading = false
+    useEffect(() => {
+        hotkeys('ctrl+x',()=>{
+            const {current: chat} = chatRef
+            const {current: code} = selectCodeRef
+            if(code){
+                chat.send(
+                    "explain the following JavaScript code: \n" +
+                    "\`\`\`javascript \n" +
+                    code + '\n' +
+                    "\`\`\`"
+                )
+            }
         })
-    })
+    }, []);
+
+  const onExplainClick = (code)=>{
+      const {current: chat} = chatRef
+      selectCodeRef.current = code
+      chat.send(
+          "explain the following JavaScript code: \n" +
+           "\`\`\`javascript \n" +
+           code + '\n' +
+           "\`\`\`"
+      )
   }
 
   const popperRef = useRef()
+  const chatRef = useRef()
   return (
       <div className={'codeViewContainer'}>
         <Whether value={dot}>
@@ -98,23 +113,9 @@ export default function Home() {
           />
         </Whether>
         <div className={'codeView'}>
-          <CodeEditor value={code} onCodeExplain={onCodeExplain}/>
+          <CodeEditor value={code} onExplainClick={onExplainClick}/>
           <div className={'codeExplainText'}>
-              <ReactMarkdown>
-                  {explain.text}
-              </ReactMarkdown>
-              <BeatLoader
-                  loading={explain.loading}
-                  size={50}
-                  cssOverride={{
-                    position:'absolute',
-                    left: '50%',
-                    top: '50%',
-                    transform: 'translate(-50%,-50%)'
-                  }}
-                  aria-label="Loading Spinner"
-                  data-testid="loader"
-              />
+              <Chat ref={chatRef}/>
           </div>
         </div>
           {

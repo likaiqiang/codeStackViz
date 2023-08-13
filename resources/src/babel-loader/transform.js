@@ -1,10 +1,10 @@
-const babel = require("@babel/core");
-const { promisify } = require("util");
-const LoaderError = require("./Error");
+import babel from '@babel/core';
+import { promisify } from 'util'
+import LoaderError from './Error';
 
 const transform = promisify(babel.transform);
 
-module.exports = async function (source, options) {
+export default async function (source, options) {
   let result;
   try {
     result = await transform(source, options);
@@ -36,4 +36,4 @@ module.exports = async function (source, options) {
   };
 };
 
-module.exports.version = babel.version;
+export const version = babel.version;

@@ -46,26 +46,129 @@ body {
   flex: auto;
   padding: 14px 20px 14px 0;
 }
+html{
+  height: 100vh;
+  overflow: hidden;
+}
 .codeViewContainer{
-  padding: 10px 10px 0;
+  padding: 10px;
+  display: flex;
+  height: 100vh;
+  box-sizing: border-box;
 }
 .codeView{
+  padding: 0 10px;
+  box-sizing: border-box;
+  flex: 1;
   display: flex;
-  padding: 10px 0;
-  align-items: flex-start;
+  flex-direction: column;
 }
 .codeExplainText{
-  background-color: azure;
-  flex:1;
-  margin: 0 10px;
-  padding: 10px;
+  /*background-color: azure;*/
+  margin-top: 10px;
   border-radius: 5px;
   position: relative;
-  height: 600px;
+  /*height: 600px;*/
   box-sizing: border-box;
   overflow: auto;
+  flex:1;
+}
+.codeSvg{
+  background-color: black;
+  width: 45%;
 }
 .codeSvg >svg{
   width: 100%;
-  background-color: black;
+  height: 100%;
+}
+
+.chatContainer .chatbox {
+  border-radius: 10px;
+  box-shadow: 5px 5px 15px rgb(119 119 119 / 50%);
+  /*border: 1px solid;*/
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+}
+.chatContainer .middle{
+  flex: 1;
+  overflow: auto;
+  height: 0;
+}
+.chatContainer .top-bar{
+  background: #F9FBFF;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  box-sizing: border-box;
+}
+.chatContainer {
+  /*padding: 0 10px;*/
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.chatContainer .talking-item{
+  display: flex;
+  margin-bottom: 20px;
+  padding: 8px 13px;
+  border-radius: 5px;
+}
+.chatContainer .talking-avatar{
+  margin-right: 10px;
+}
+.chatContainer .talking-item:first-child{
+  margin-top: 20px;
+}
+
+.chatContainer .talking-item.human{
+  justify-content: flex-end;
+  padding: 0;
+}
+.chatContainer .talking-item.ai{
+  background-color: white;
+  display: inline-flex;
+  align-items: center;
+}
+.chatContainer .talking-item.human .bubble{
+  background-color: #07C160;
+  padding: 8px 13px;
+}
+.chatContainer .talking-item.ai .bubble{
+  flex: 1;
+}
+
+.chatContainer .textareaContainer{
+  display: flex;
+}
+.chatContainer .textareaContainer .cancel{
+  background-color: orange;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  color: #F9FBFF;
+}
+.chatContainer .textareaContainer textarea{
+  width: 100%;
+  padding: 10px 15px;
+  box-sizing: border-box;
+  resize: none;
+  /*border: 1px solid;*/
+  /*outline: 1px solid orange;*/
+  /*border: none;*/
+  outline: none;
+  background-color: white;
+  flex:1;
+}
+.codebox-handler {
+  --tw-text-opacity: 1;
+  color: rgba(217, 217, 227, var(--tw-text-opacity));
+  padding: 0 10px;
+  border-top-right-radius:5px;
+  border-top-left-radius:5px;
+  line-height: 32px;
+
 }

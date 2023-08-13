@@ -2,14 +2,6 @@ const {parse} = require('@babel/parser')
 const traverse = require('@babel/traverse').default;
 const generate = require('@babel/generator').default
 const t = require('@babel/types')
-// const DOMParser = require('xmldom').DOMParser;
-// global.DOMParser = DOMParser
-
-// const inputFilePath = path.join(__dirname,'./bundle.js')
-// const inputCode = fs.readFileSync(inputFilePath) + ''
-// const ast = parse(inputCode,{
-//     sourceType:'module'
-// })
 
 function generateRandomId() {
     return '_' + Math.random().toString(36).substr(2, 9);
@@ -115,7 +107,7 @@ export const genreateDotStrByCode = ({code, filename,entryFuncName})=>{
 export function parseDotJson({options,selectNodeText}){
     const {node = {},statements=[]} = options
     // node  ["fillcolor"="#eeeeee", "style"="filled,rounded", "shape"="rect"];
-    let str = 'digraph G {\n'
+    let str = 'digraph G {\nrankdir=LR;'
     if(Object.keys(node).length > 0){
         str += Object.keys(node).reduce((acc,key,index)=>{
             return acc += `"${key}"="${node[key]}",`

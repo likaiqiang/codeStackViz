@@ -1,14 +1,5 @@
-let babel;
-try {
-  babel = require("@babel/core");
-} catch (err) {
-  if (err.code === "MODULE_NOT_FOUND") {
-    err.message +=
-      "\n babel-loader@9 requires Babel 7.12+ (the package '@babel/core'). " +
-      "If you'd like to use Babel 6.x ('babel-core'), you should install 'babel-loader@7'.";
-  }
-  throw err;
-}
+import babel from '@babel/core';
+
 
 // Since we've got the reverse bridge package at @babel/core@6.x, give
 // people useful feedback if they try to use it alongside babel-loader.
@@ -19,14 +10,14 @@ if (/^6\./.test(babel.version)) {
   );
 }
 
-const { version } = require("../package.json");
-const cache = require("./cache");
-const transform = require("./transform");
-const injectCaller = require("./injectCaller");
-const schema = require("./schema");
+import { version } from './package.json'
+import cache from './cache'
+import transform from './transform'
+import injectCaller from './injectCaller'
+import schema from './schema';
 
-const { isAbsolute } = require("path");
-const validateOptions = require("schema-utils").validate;
+import { isAbsolute } from 'path';
+import {validate as validateOptions} from 'schema-utils'
 
 function subscribe(subscriber, metadata, context) {
   if (context[subscriber]) {
@@ -34,8 +25,9 @@ function subscribe(subscriber, metadata, context) {
   }
 }
 
-module.exports = makeLoader();
-module.exports.custom = makeLoader;
+export default makeLoader();
+
+export const custom = makeLoader
 
 function makeLoader(callback) {
   const overrides = callback ? callback(babel) : undefined;
