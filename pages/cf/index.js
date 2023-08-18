@@ -1,3 +1,5 @@
+import {collectImportedModules, isFuncImported} from "@/pages/cf/vertex";
+
 const {parse} = require('@babel/parser')
 const traverse = require('@babel/traverse').default;
 const generate = require('@babel/generator').default
@@ -5,7 +7,12 @@ const t = require('@babel/types')
 const tern = require("tern");
 const {collecVertexsByAst,getParsedParentFuncLoc} = require('./vertex')
 
-const server = new tern.Server({});
+const server = new tern.Server({
+    libs: [
+        "find-cache-dir@4.0.0",
+        "schema-utils@4.0.0"
+    ]
+});
 
 function generateRandomId() {
     return '_' + Math.random().toString(36).substr(2, 9);
@@ -29,12 +36,11 @@ export const generateCode = (path)=>{
     try{
         return generate(path.node).code
     } catch (e){
-        debugger
+
     }
 }
 
 function filterNodesByEntry(options, entryFunctionId) {
-    debugger
     const {statements: nodes} = options
     const relatedNodes = new Set(); // 用 Set 来存储相关节点
     function findRelatedNodes(entry) {
@@ -60,7 +66,6 @@ export const generateDotStr = ({ast,entryFuncId,selectNodeId,code})=>{
         genreateDotJson(ast,code),
         entryFuncId
     )
-    debugger
     return parseDotJson({
         options: filteredDotJson,
         selectNodeId
@@ -168,6 +173,7 @@ function genreateDotJson(ast,code){
     }
 
     const funcDecVertexs = collecVertexsByAst(ast)
+    const importedModules = collectImportedModules(ast)
     server.addFile("example.js", code);
 
     server.flush(()=> {
@@ -182,13 +188,24 @@ function genreateDotJson(ast,code){
                 server.request({ query }, (err, data) => {
                     if(Object.keys(data).length){
                         const {start,end} = data
-                        const callVertex = funcDecVertexs.find(vertex=> vertex.loc.start === start && vertex.loc.end === end)
+                        let callVertex = funcDecVertexs.find(vertex=> vertex.loc.start === start && vertex.loc.end === end)
                         const parentFunc = path.getFunctionParent()
                         if(parentFunc){
                             const {start: parentFuncStart ,end: parentFuncEnd} = getParsedParentFuncLoc(path)
                             if(parentFuncStart && parentFuncEnd){
                                 const parentFuncVertex = funcDecVertexs.find(vertex=> vertex.loc.start === parentFuncStart && vertex.loc.end === parentFuncEnd)
 
+                                if(!callVertex){
+                                    const isFuncFromNpm = isFuncImported(path,importedModules)
+                                    if(isFuncFromNpm){
+                                        callVertex = {
+                                            npm: true,
+                                            id: isFuncFromNpm.id,
+                                            loc: isFuncFromNpm.loc,
+                                            name: isFuncFromNpm.localName
+                                        }
+                                    }
+                                }
                                 if(callVertex && parentFuncVertex){
                                     dotJson.statements.push({
                                         head:{
@@ -208,6 +225,7 @@ function genreateDotJson(ast,code){
                                         attributes:{}
                                     })
                                 }
+
                             }
                         }
                     }
@@ -232,7 +250,6 @@ function setToObject(inputSet,getKey = (value,index)=>`key${index}`) {
 }
 
 function collectNodesFromEdges({edges,selectNodeId}) {
-    debugger
     const collectedNodes = new Set(); // 使用 Set 来避免重复添加节点
     let selectNode = null
     edges.forEach(edge => {
