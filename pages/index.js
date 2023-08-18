@@ -6,7 +6,7 @@ import {
     generateCode, generateDotStr,
     genreateDotStr,
     genreateDotStrByAst,
-    genreateDotStrByCode, genreateSelectedDotStrByAst,
+    genreateDotStrByCode, genreateSelectedDotStrByAst, parseDotJson,
 } from "@/pages/cf";
 import Graphviz from "@/components/Graphviz";
 import CodeEditor from '@/components/Editor'
@@ -26,16 +26,22 @@ export default function Home() {
   const dotRef = useRef({
       nodes:{},
       dotJson:{},
-      additional:{}
+      filteredDotJson:{},
+      importedModules:{},
+      funcDecVertexs:[],
+      entryFuncId:''
   })
     const selectCodeRef = useRef('')
-    const renderDot = ({dot,nodes,dotJson})=>{
-        console.log('dot',dot);
+    const renderDot = ({dot,nodes,dotJson,filteredDotJson,importedModules,funcDecVertexs,entryFuncId})=>{
         setDot(dot)
         dotRef.current = {
             ...dotRef.current,
             dotJson,
-            nodes
+            nodes,
+            importedModules,
+            funcDecVertexs,
+            entryFuncId,
+            filteredDotJson
         }
     }
     const filename = 'babel-loader'
@@ -49,11 +55,19 @@ export default function Home() {
       signal: controller.signal
     }).then(res=>res.json()).then(({bundle})=>{
       return genreateDotStrByCode({code:bundle,filename, entryFuncName:'loader'})
-    }).then(({dot,nodes,dotJson,selectNode})=>{
+    }).then(({dot,nodes,dotJson,filteredDotJson,importedModules,entryFuncId,selectNode})=>{
       setCode(
           generateCode(selectNode.path)
       )
-      renderDot({dot,nodes,dotJson})
+      renderDot({
+          dot,
+          nodes,
+          dotJson,
+          selectNode,
+          filteredDotJson,
+          importedModules,
+          entryFuncId
+      })
     })
     return ()=>{
       controller.abort()
@@ -96,18 +110,21 @@ export default function Home() {
               className={'codeSvg'}
               dot={dot}
               popper={popperRef}
-              onNodeClick={({id,text})=>{
-                  const targetNode = dotRef.current.nodes[text]
+              onNodeClick={({id})=>{
+                  const {current: dotCurrent} = dotRef
+                  const targetNode = dotCurrent.nodes[id]
                   setCode(
                       generateCode(
                           targetNode.path
                       )
                   )
-                  const {dot} = generateDotStr({
-                      ast: astCache[filename],
-                      selectNodeText: text,
-                      entryFuncName:'loader'
+                  const {dot} = parseDotJson({
+                      filteredDotJson: dotCurrent.filteredDotJson,
+                      dotJson: dotCurrent.dotJson,
+                      selectNodeId: id,
+                      entryFuncId: dotCurrent.entryFuncId
                   })
+
                   setDot(dot)
               }}
           />

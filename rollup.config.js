@@ -22,9 +22,9 @@ module.exports = {
         json(),
         resolve(), // 解析 node_modules 中的模块
         commonjs(), // 转换 CommonJS 模块为 ES6 模块
-        // babel({
-        //     presets:["@babel/preset-env"]
-        // }) // 编译 ES6+ 代码
+        babel({
+            plugins:["@babel/plugin-transform-modules-commonjs"]
+        })
     ],
     external: external()
 };

@@ -62,17 +62,22 @@ function filterNodesByEntry(options, entryFunctionId) {
 
 
 export const generateDotStr = ({ast,entryFuncId,selectNodeId,code})=>{
+    const {dotJson,importedModules,funcDecVertexs} = genreateDotJson(ast,code)
     const filteredDotJson = filterNodesByEntry(
-        genreateDotJson(ast,code),
+        dotJson,
         entryFuncId
     )
     return parseDotJson({
-        options: filteredDotJson,
-        selectNodeId
+        filteredDotJson,
+        dotJson,
+        selectNodeId,
+        entryFuncId,
+        importedModules,
+        funcDecVertexs
     })
 }
 
-function getEntryFuncVertex({filename,funcname = 'entryFuncName'}){
+function getFuncVertexByName({filename,funcname = 'entryFuncName'}){
     const ast = astCache[filename]
     let vertex = null
     traverse(ast,{
@@ -96,7 +101,7 @@ function getEntryFuncVertex({filename,funcname = 'entryFuncName'}){
 
 export const genreateDotStrByCode = ({code, filename,entryFuncName})=>{
     const ast =  astCache[filename] || (astCache[filename] = getAst({code,filename}))
-    const entryFuncVertex = getEntryFuncVertex({filename,funcname: entryFuncName})
+    const entryFuncVertex = getFuncVertexByName({filename,funcname: entryFuncName})
 
     return generateDotStr({
         ast,
@@ -107,8 +112,8 @@ export const genreateDotStrByCode = ({code, filename,entryFuncName})=>{
 }
 
 
-export function parseDotJson({options,selectNodeId}){
-    const {node = {},statements=[]} = options
+export function parseDotJson({filteredDotJson,dotJson,selectNodeId,entryFuncId,importedModules,funcDecVertexs}){
+    const {node = {},statements=[]} = filteredDotJson
     // node  ["fillcolor"="#eeeeee", "style"="filled,rounded", "shape"="rect"];
     let str = 'digraph G {\nrankdir=LR;'
     if(Object.keys(node).length > 0){
@@ -148,9 +153,13 @@ export function parseDotJson({options,selectNodeId}){
     }
     return {
         dot: str + '\n}',
-        dotJson: options,
+        dotJson,
+        filteredDotJson,
         nodes,
-        selectNode
+        selectNode,
+        importedModules: importedModules || null,
+        funcDecVertexs: funcDecVertexs || null,
+        entryFuncId
     }
 }
 
@@ -212,13 +221,15 @@ function genreateDotJson(ast,code){
                                             id: parentFuncVertex.id,
                                             path: parentFuncVertex.path,
                                             attrs:{
-                                                label: parentFuncVertex.name
+                                                label: parentFuncVertex.name,
+                                                id: parentFuncVertex.id
                                             }
                                         },
                                         tail:{
                                             id: callVertex.id,
                                             path: callVertex.path,
                                             attrs:{
+                                                id: callVertex.id,
                                                 label: callVertex.name
                                             }
                                         },
@@ -235,7 +246,11 @@ function genreateDotJson(ast,code){
         })
     })
 
-    return dotJson
+    return {
+        dotJson,
+        funcDecVertexs,
+        importedModules
+    }
 }
 
 function setToObject(inputSet,getKey = (value,index)=>`key${index}`) {
@@ -260,10 +275,14 @@ function collectNodesFromEdges({edges,selectNodeId}) {
     for(let id in nodes){
         if(selectNodeId && id === selectNodeId){
             for(let key in selectNodeConfig){
-                nodes[selectNodeId][key] = selectNodeConfig[key]
+                nodes[selectNodeId]['attrs'][key] = selectNodeConfig[key]
             }
             selectNode = nodes[selectNodeId]
-            break
+        }
+        else {
+            for(let key in selectNodeConfig){
+                delete nodes[id]['attrs'][key]
+            }
         }
     }
     return {
