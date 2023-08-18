@@ -103,7 +103,8 @@ export const collectImportedModules = (ast)=>{
                             start: source.start,
                             end: source.end
                         },
-                        id:`${local.name}-${source.start}-${source.end}`
+                        id:`${local.name}-${source.start}-${source.end}`,
+                        path
                     }
                 } else if (specifier.type === 'ImportSpecifier') {
                     const localName = specifier.local.name;
@@ -120,7 +121,8 @@ export const collectImportedModules = (ast)=>{
                             start: source.start,
                             end: source.end
                         },
-                        id:`${localName}-${source.start}-${source.end}`
+                        id:`${localName}-${source.start}-${source.end}`,
+                        path
                     }
                 }
             }

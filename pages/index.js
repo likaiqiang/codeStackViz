@@ -113,11 +113,8 @@ export default function Home() {
               onNodeClick={({id})=>{
                   const {current: dotCurrent} = dotRef
                   const targetNode = dotCurrent.nodes[id]
-                  setCode(
-                      generateCode(
-                          targetNode.path
-                      )
-                  )
+                  const code = (targetNode.npm ? generateCode(targetNode.npmPath) : '') + '\n' + generateCode(targetNode.path)
+                  setCode(code)
                   const {dot} = parseDotJson({
                       filteredDotJson: dotCurrent.filteredDotJson,
                       dotJson: dotCurrent.dotJson,

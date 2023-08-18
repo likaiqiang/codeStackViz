@@ -7,12 +7,7 @@ const t = require('@babel/types')
 const tern = require("tern");
 const {collecVertexsByAst,getParsedParentFuncLoc} = require('./vertex')
 
-const server = new tern.Server({
-    libs: [
-        "find-cache-dir@4.0.0",
-        "schema-utils@4.0.0"
-    ]
-});
+const server = new tern.Server({});
 
 function generateRandomId() {
     return '_' + Math.random().toString(36).substr(2, 9);
@@ -211,7 +206,9 @@ function genreateDotJson(ast,code){
                                             npm: true,
                                             id: isFuncFromNpm.id,
                                             loc: isFuncFromNpm.loc,
-                                            name: isFuncFromNpm.localName
+                                            name: isFuncFromNpm.localName + ' (npm)',
+                                            path,
+                                            npmPath: isFuncFromNpm.path
                                         }
                                     }
                                 }
@@ -231,7 +228,9 @@ function genreateDotJson(ast,code){
                                             attrs:{
                                                 id: callVertex.id,
                                                 label: callVertex.name
-                                            }
+                                            },
+                                            npm: !!callVertex.npm,
+                                            npmPath: callVertex.npmPath
                                         },
                                         attributes:{}
                                     })
