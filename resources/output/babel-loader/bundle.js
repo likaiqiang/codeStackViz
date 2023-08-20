@@ -44,7 +44,7 @@ class LoaderError extends Error {
   }
 }
 
-const transform = promisify(babel.transform);
+const transform = promisify(babel.transform); // 这种的经过promisify处理的想办法支持
 
 async function transform$1 (source, options) {
   let result;

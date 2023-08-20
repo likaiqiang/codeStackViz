@@ -35,8 +35,8 @@ export const generateCode = (path)=>{
     }
 }
 
-function filterNodesByEntry(options, entryFunctionId) {
-    const {statements: nodes} = options
+export function filterNodesByEntry({dotJson,entryFuncId}) {
+    const {statements: nodes} = dotJson
     const relatedNodes = new Set(); // 用 Set 来存储相关节点
     function findRelatedNodes(entry) {
         nodes.forEach(node => {
@@ -46,10 +46,10 @@ function filterNodesByEntry(options, entryFunctionId) {
             }
         });
     }
-    findRelatedNodes(entryFunctionId);
+    findRelatedNodes(entryFuncId);
 
     return {
-        ...options,
+        ...dotJson,
         statements: nodes.filter(node => relatedNodes.has(node))
     }
 
@@ -58,10 +58,7 @@ function filterNodesByEntry(options, entryFunctionId) {
 
 export const generateDotStr = ({ast,entryFuncId,selectNodeId,code})=>{
     const {dotJson,importedModules,funcDecVertexs} = genreateDotJson(ast,code)
-    const filteredDotJson = filterNodesByEntry(
-        dotJson,
-        entryFuncId
-    )
+    const filteredDotJson = filterNodesByEntry({dotJson,entryFuncId})
     return parseDotJson({
         filteredDotJson,
         dotJson,

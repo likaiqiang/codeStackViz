@@ -113,7 +113,7 @@ export const collectImportedModules = (ast)=>{
                     const moduleName = source.value;
                     // importedName与 localName相等表示没有as
 
-                    console.log(`Imported ${importedName}  as ${localName} from ${moduleName}`);
+                    // console.log(`Imported ${importedName}  as ${localName} from ${moduleName}`);
                     importedModules[localName] = {
                         moduleName,
                         localName,
