@@ -6,8 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "build:rollup": "rollup -c"
+    "lint": "next lint"
   },
   "dependencies": {
     "@babel/core": "^7.22.9",

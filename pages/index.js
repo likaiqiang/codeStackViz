@@ -1,8 +1,10 @@
 import {useEffect, useRef, useState} from "react";
 import ReactDOM from "react-dom";
+import {selectAll,select} from "d3-selection";
 import {
-    filterNodesByEntry,
-    generateCode,
+    cache,
+    filterJsonByEntry,
+    generateCode, generateDotStr,
     genreateDotStrByCode, parseDotJson,
 } from "@/pages/cf";
 import Graphviz from "@/components/Graphviz";
@@ -26,6 +28,7 @@ export default function Home() {
         list: [],
         index: -1
     })
+    const graphvizRef = useRef()
     const push = (id) => {
         setHistory(draft => {
             draft.index = draft.index + 1
@@ -73,26 +76,24 @@ export default function Home() {
 
     const dotRef = useRef({
         nodes: {},
-        dotJson: {},
         filteredDotJson: {},
         importedModules: {},
         funcDecVertexs: [],
-        entryFuncId: ''
+        dotJson:{}
     })
     const selectCodeRef = useRef('')
-    const renderDot = ({dot, nodes, dotJson, filteredDotJson, importedModules, funcDecVertexs, entryFuncId}) => {
+    const renderDot = ({dot, nodes, filteredDotJson, dotJson,importedModules, funcDecVertexs}) => {
         setDot(dot)
         dotRef.current = {
             ...dotRef.current,
-            dotJson,
             nodes,
             importedModules,
             funcDecVertexs,
-            entryFuncId,
-            filteredDotJson
+            filteredDotJson,
+            dotJson
         }
     }
-    const filename = 'babel-loader'
+    const filename = 'babel-parser'
     useEffect(() => {
         const controller = new AbortController()
         let promise = fetch(`/api/get_bundle?filename=${filename}`, {
@@ -102,8 +103,8 @@ export default function Home() {
             },
             signal: controller.signal
         }).then(res => res.json()).then(({bundle}) => {
-            return genreateDotStrByCode({code: bundle, filename, entryFuncName: 'loader'})
-        }).then(({dot, nodes, dotJson, filteredDotJson, importedModules, entryFuncId, selectNode}) => {
+            return genreateDotStrByCode({code: bundle, filename})
+        }).then(({dot, nodes, filteredDotJson, selectNode}) => {
             setCode(
                 generateCode(selectNode.path)
             )
@@ -111,14 +112,25 @@ export default function Home() {
                 draft.list.push(selectNode.id)
                 draft.index = draft.index + 1
             })
+            const {importedModules,funcDecVertexs,dotJson} = cache[filename]
+            const {maxLevel} = filteredDotJson
+            if(maxLevel > 6){
+                dot = generateDotStr({
+                    selectNodeId: selectNode.id,
+                    filteredDotJson:{
+                        ...filteredDotJson,
+                        statements: filteredDotJson.statements.filter(node=>node.level <= 6)
+                    }
+                }).dot
+            }
             renderDot({
                 dot,
-                nodes,
                 dotJson,
+                nodes,
                 selectNode,
                 filteredDotJson,
                 importedModules,
-                entryFuncId
+                funcDecVertexs
             })
         })
         return () => {
@@ -138,19 +150,27 @@ export default function Home() {
         explainCode()
     }
 
-    const onFilterDotJson = ({entryFuncId}) => {
+    const onFilterDotJson = ({entryFuncId,onGraphvizRenderEnd = ()=>{}}) => {
         const {current: dotCurrent} = dotRef
-        const filteredDotJson = filterNodesByEntry({
+        const filteredDotJson = filterJsonByEntry({
             dotJson: dotCurrent.dotJson,
             entryFuncId
         })
-        const {dot} = parseDotJson({
+        const {dot} = generateDotStr({
             filteredDotJson,
-            dotJson: dotCurrent.dotJson,
-            entryFuncId,
             selectNodeId: entryFuncId
         })
-        setDot(dot)
+        const {renderSvg} = graphvizRef.current
+        renderSvg(dot).then(()=>{
+            onGraphvizRenderEnd()
+        })
+    }
+
+    const onSelectNodeCode = (id)=>{
+        const {current: dotCurrent} = dotRef
+        const targetNode = dotCurrent.nodes[id]
+        const code = (targetNode.npm ? generateCode(targetNode.npmPath) : '') + '\n' + generateCode(targetNode.path)
+        setCode(code)
     }
 
     const popperRef = useRef()
@@ -163,6 +183,7 @@ export default function Home() {
                     dot={dot}
                     popper={popperRef}
                     history={history}
+                    ref={graphvizRef}
                     onArrowClick={({type}) => {
                         let id = ''
                         if (type === 'back') {
@@ -175,22 +196,20 @@ export default function Home() {
                             entryFuncId: id
                         })
                     }}
-                    onNodeClick={({id}) => {
-                        const {current: dotCurrent} = dotRef
-                        const targetNode = dotCurrent.nodes[id]
-                        const code = (targetNode.npm ? generateCode(targetNode.npmPath) : '') + '\n' + generateCode(targetNode.path)
-                        setCode(code)
-                        const {dot} = parseDotJson({
-                            filteredDotJson: dotCurrent.filteredDotJson,
-                            dotJson: dotCurrent.dotJson,
-                            selectNodeId: id,
-                            entryFuncId: dotCurrent.entryFuncId
-                        })
-                        setDot(dot)
+                    onNodeClick={(node) => {
+                        const id = node.getAttribute("id");
+                        onSelectNodeCode(id)
                     }}
-                    onNodeDbClick={({id}) => {
-                        onFilterDotJson({entryFuncId: id})
-                        push(id)
+                    onNodeDbClick={(node) => {
+                        const id = node.getAttribute("id");
+                        onFilterDotJson({
+                            entryFuncId: id,
+                            onGraphvizRenderEnd: ()=>{
+                                console.log('end');
+                                push(id)
+                                onSelectNodeCode(id)
+                            }
+                        })
                     }}
                 />
             </Whether>

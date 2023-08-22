@@ -1,19 +1,13 @@
-import {collectImportedModules, isFuncImported} from "@/pages/cf/vertex";
-
 const {parse} = require('@babel/parser')
 const traverse = require('@babel/traverse').default;
 const generate = require('@babel/generator').default
 const t = require('@babel/types')
 const tern = require("tern");
-const {collecVertexsByAst,getParsedParentFuncLoc} = require('./vertex')
+const {collecVertexsByAst,getParsedParentFuncLoc,collectImportedModules,isFuncImported} = require('./vertex')
 
 const server = new tern.Server({});
 
-function generateRandomId() {
-    return '_' + Math.random().toString(36).substr(2, 9);
-}
-
-const selectNodeConfig = {
+export const selectNodeConfig = {
     color:'red'
 }
 
@@ -35,76 +29,114 @@ export const generateCode = (path)=>{
     }
 }
 
-export function filterNodesByEntry({dotJson,entryFuncId}) {
+export function filterJsonByEntry({dotJson,entryFuncId}) {
     const {statements: nodes} = dotJson
-    const relatedNodes = new Set(); // 用 Set 来存储相关节点
-    function findRelatedNodes(entry) {
+    const relatedNodes = new Map(); // 用 Map 来存储相关节点
+    let maxLevel = 0
+    function findRelatedNodes(entry,level) {
         nodes.forEach(node => {
-            if (node.head.id === entry && !relatedNodes.has(node)){
-                relatedNodes.add(node);
-                findRelatedNodes(node.tail.id); // 递归查找下一级相关节点
+            const key = node.head.id + '-' + node.tail.id
+
+            if (node.head.id === entry){
+                if(!relatedNodes.has(key)){
+                    node.level = level
+                    node.count = 1
+                    relatedNodes.set(key,node);
+                    maxLevel = Math.max(level,maxLevel)
+                    findRelatedNodes(node.tail.id,level + 1); // 递归查找下一级相关节点
+                } else {
+                    const existedNode = relatedNodes.get(key)
+                    if(existedNode.head.id === existedNode.tail.id){
+                        existedNode.self = true
+                    }
+                    else{
+                        existedNode.count = existedNode.count + 1
+                    }
+                }
             }
         });
     }
-    findRelatedNodes(entryFuncId);
+    findRelatedNodes(entryFuncId,0);
 
     return {
         ...dotJson,
-        statements: nodes.filter(node => relatedNodes.has(node))
+        maxLevel,
+        statements: nodes.filter(node => {
+            const key = node.head.id + '-' + node.tail.id
+            return relatedNodes.has(key)
+        })
     }
 
 }
 
-
-export const generateDotStr = ({ast,entryFuncId,selectNodeId,code})=>{
-    const {dotJson,importedModules,funcDecVertexs} = genreateDotJson(ast,code)
-    const filteredDotJson = filterNodesByEntry({dotJson,entryFuncId})
-    return parseDotJson({
-        filteredDotJson,
-        dotJson,
-        selectNodeId,
-        entryFuncId,
-        importedModules,
-        funcDecVertexs
-    })
-}
-
-function getFuncVertexByName({filename,funcname = 'entryFuncName'}){
-    const ast = astCache[filename]
+function getEntryFuncVerex({filename,funcname = 'jsCodeViewEntryFunc',funcDecVertexs=[]}){
+    const {ast,code} = cache[filename]
     let vertex = null
+    server.addFile("entry.js", code);
     traverse(ast,{
         FunctionDeclaration(path){
             const {id} = path.node
-            const {start, end} = id
             if(id.name === funcname){
-                vertex = {
-                    id: `${id.name}-${start}-${end}`,
-                    loc:{
-                        start,
-                        end
-                    },
-                    name: id.name
-                }
+                server.flush(()=>{
+                    path.traverse({
+                        CallExpression(path){
+                            const {end} = path.node.callee
+                            const query = {
+                                type: "definition",
+                                file: "entry.js",
+                                end,
+                            }
+                            server.request({query},(err,data={})=>{
+                                const {start,end} = data
+                                let funcVertex = funcDecVertexs.find(vertex=> vertex.loc.start === start && vertex.loc.end === end)
+                                vertex = {
+                                    id: `${funcVertex.name}-${start}-${end}`,
+                                    loc:{
+                                        start,
+                                        end
+                                    },
+                                    name: funcVertex.name
+                                }
+                            })
+                        }
+                    })
+                })
             }
         }
     })
     return vertex
 }
 
-export const genreateDotStrByCode = ({code, filename,entryFuncName})=>{
-    const ast =  astCache[filename] || (astCache[filename] = getAst({code,filename}))
-    const entryFuncVertex = getFuncVertexByName({filename,funcname: entryFuncName})
+export const genreateDotStrByCode = ({code, filename})=>{
+    const ast = getAst({code,filename})
+
+    const {dotJson,importedModules,funcDecVertexs} = genreateDotJson(ast,code)
+    cache[filename] = {
+        ast,
+        dotJson,
+        importedModules,
+        funcDecVertexs,
+        code
+    }
+
+    const entryFuncVertex = getEntryFuncVerex({
+        filename,
+        funcDecVertexs
+    })
+
+    const filteredDotJson = filterJsonByEntry({
+        dotJson,
+        entryFuncId: entryFuncVertex.id
+    })
 
     return generateDotStr({
-        ast,
-        entryFuncId: entryFuncVertex.id,
+        filteredDotJson,
         selectNodeId: entryFuncVertex.id,
-        code
     })
 }
 
 
-export function parseDotJson({filteredDotJson,dotJson,selectNodeId,entryFuncId,importedModules,funcDecVertexs}){
+export function generateDotStr({filteredDotJson,selectNodeId}){
     const {node = {},statements=[]} = filteredDotJson
     // node  ["fillcolor"="#eeeeee", "style"="filled,rounded", "shape"="rect"];
     let str = 'digraph G {\nrankdir=LR;'
@@ -145,17 +177,23 @@ export function parseDotJson({filteredDotJson,dotJson,selectNodeId,entryFuncId,i
     }
     return {
         dot: str + '\n}',
-        dotJson,
-        filteredDotJson,
         nodes,
         selectNode,
-        importedModules: importedModules || null,
-        funcDecVertexs: funcDecVertexs || null,
-        entryFuncId
+        filteredDotJson
     }
 }
 
-export const astCache = {}
+export const cache = {}
+
+function findEntryFunctions(edges = []) {
+    let calledFunctions = new Set();
+    let allFunctions = new Set();
+    for (let item of edges) {
+        allFunctions.add(item.head.id);
+        calledFunctions.add(item.tail.id);
+    }
+    return new Set([...allFunctions].filter(x => !calledFunctions.has(x)));
+}
 
 
 // 在JavaScript中，一个函数可以在全局被调用、可以在函数内部被调用，可以是成员函数（2种情况：普通对象与类实例化）、调用call/apply、constructor?
@@ -186,7 +224,7 @@ function genreateDotJson(ast,code){
                     file: "example.js",
                     end: calleeEnd,
                 };
-                server.request({ query }, (err, data) => {
+                server.request({ query }, (err, data = {}) => {
                     if(Object.keys(data).length){
                         const {start,end} = data
                         let callVertex = funcDecVertexs.find(vertex=> vertex.loc.start === start && vertex.loc.end === end)

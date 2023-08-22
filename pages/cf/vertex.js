@@ -37,17 +37,19 @@ export function collecVertexsByAst(ast){
         },
         // const obj = {a(){}}
         ObjectMethod(path){
-            const {key} = path.node
-            const {start, end} = key
-            vertexs.push({
-                id: `${key.name}-${start}-${end}`,
-                loc:{
-                    start,
-                    end
-                },
-                name: key.name,
-                path
-            })
+            const {key,kind} = path.node
+            if(kind !== 'get'){
+                const {start, end} = key
+                vertexs.push({
+                    id: `${key.name}-${start}-${end}`,
+                    loc:{
+                        start,
+                        end
+                    },
+                    name: key.name,
+                    path
+                })
+            }
         },
         // const obj = {a:()=>{}}
         ObjectProperty(path){
@@ -143,7 +145,7 @@ export const isFuncImported = (path,importedModules={})=>{
             property = object.property;
         }
 
-        if (object.type === 'Identifier' && importedModules[object.node.name]) {
+        if (object.type === 'Identifier' && importedModules[object?.node?.name || object.name]) {
             return importedModules[object.node.name]
         }
     }
