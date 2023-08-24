@@ -1,12 +1,11 @@
 import {useEffect, useRef, useState} from "react";
 import ReactDOM from "react-dom";
-import {selectAll,select} from "d3-selection";
 import {
-    cache,
     filterJsonByEntry,
-    generateCode, generateDotStr,
-    genreateDotStrByCode, getConfigByCode, parseDotJson,
+    generateDotStr,
+    getConfigByCode,
 } from "@/pages/cg";
+import {generateSplicedCode} from './cg/common'
 import Graphviz from "@/components/Graphviz";
 import CodeEditor from '@/components/Editor'
 import CustomPopper from "@/components/Popper";
@@ -47,7 +46,6 @@ function Settings(props){
 const filename = 'babel-parser'
 export default function Home() {
 
-    const [dot, setDot] = useState(null)
     const [code, setCode] = useState('')
 
     const [cacheEntry,setCacheEntry] = useLocalStorage('entryFuncName',{
@@ -89,12 +87,11 @@ export default function Home() {
         return id
     }
 
-    const explainCode = ()=>{
+    const explainCode = (code)=>{
         const {current: chat} = chatRef
-        const {current: code} = selectCodeRef
         if(code){
             chat.send(
-                "explain the following JavaScript code: \n" +
+                "解释以下JavaScript代码: \n" +
                 "\`\`\`javascript \n" +
                 code + '\n' +
                 "\`\`\`"
@@ -102,15 +99,7 @@ export default function Home() {
         }
     }
 
-    // const dotRef = useRef({
-    //     nodes: {},
-    //     filteredDotJson: {},
-    //     importedModules: {},
-    //     funcDecVertexs: [],
-    //     dotJson:{}
-    // })
     const configRef = useRef()
-    const selectCodeRef = useRef('')
 
     useEffect(() => {
         const controller = new AbortController()
@@ -153,36 +142,13 @@ export default function Home() {
     }, []);
 
     useEffect(() => {
-        hotkeys('ctrl+x, cmd+x',explainCode)
         hotkeys('esc',back)
-
     }, []);
-
-    const onExplainClick = (code) => {
-        selectCodeRef.current = code
-        explainCode()
-    }
-
-    const onFilterDotJson = ({entryFuncId,onGraphvizRenderEnd = ()=>{}}) => {
-        const {current: config} = configRef
-        const filteredDotJson = filterJsonByEntry({
-            dotJson: config.dotJson,
-            entryFuncId
-        })
-        const {dot} = generateDotStr({
-            filteredDotJson,
-            selectNodeId: entryFuncId
-        })
-        const {renderSvg} = graphvizRef.current
-        renderSvg(dot).then(()=>{
-            onGraphvizRenderEnd()
-        })
-    }
 
     const onSelectNodeCode = (id)=>{
         const {current: config} = configRef
         const targetNode = config.nodes[id]
-        const code = (targetNode.npm ? generateCode(targetNode.npmPath) : '') + '\n' + generateCode(targetNode.path)
+        const code = generateSplicedCode(targetNode)
         setCode(code)
     }
     const onCloseModal = ()=>{
@@ -262,7 +228,7 @@ export default function Home() {
                 }}
             />
             <div className={'codeView'}>
-                <CodeEditor value={code} onExplainClick={onExplainClick}/>
+                <CodeEditor value={code} onExplainClick={explainCode}/>
                 <div className={'codeExplainText'}>
                     <Chat ref={chatRef}/>
                 </div>

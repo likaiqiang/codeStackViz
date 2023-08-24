@@ -181,6 +181,10 @@ html{
   display: inline-flex;
   align-items: center;
 }
+.chatContainer .talking-item .bubble{
+  box-sizing: border-box;
+  max-width: 100%;
+}
 .chatContainer .talking-item.human .bubble{
   background-color: #07C160;
   padding: 8px 13px;

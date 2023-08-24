@@ -1,10 +1,9 @@
-import React from "react";
+import React, {useRef} from "react";
 import Editor from "@monaco-editor/react";
-import { PromptTemplate } from "langchain/prompts";
-import {OpenAI} from "langchain/llms/openai"
 
 export default (props)=>{
     const {value,onExplainClick = ()=>{}} = props
+    const selectCodeRef = useRef()
     const handleEditorDidMount = (editor, monaco)=>{
         editor.addAction({
             // 动作的唯一标识符
@@ -19,9 +18,17 @@ export default (props)=>{
                 const selectedCode = editor.getModel().getValueInRange(selection)
 
                 if(!selectedCode) return null
+                selectCodeRef.current = selectedCode
+
                 onExplainClick(selectedCode)
 
             },
+        });
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_X, function() {
+            // 执行你的代码
+            if(selectCodeRef.current){
+                onExplainClick(selectCodeRef.current)
+            }
         });
     }
     return (

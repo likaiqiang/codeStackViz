@@ -1,7 +1,7 @@
 import * as t from "@babel/types";
 import tern from "tern";
 import {parse} from "@babel/parser";
-import {getAst} from "@/pages/cg/common";
+import {generateNameByPath, getAst} from "@/pages/cg/common";
 const generate = require('@babel/generator').default
 
 const {default: traverse} = require("@babel/traverse");
@@ -21,7 +21,7 @@ export function collecVertexsByAst(ast){
                     start,
                     end
                 },
-                name: id.name,
+                name: generateNameByPath(path),
                 path
             })
         },
@@ -36,7 +36,7 @@ export function collecVertexsByAst(ast){
                         start,
                         end
                     },
-                    name: id.name,
+                    name: generateNameByPath(path),
                     path
                 })
             }
@@ -52,7 +52,7 @@ export function collecVertexsByAst(ast){
                         start,
                         end
                     },
-                    name: key.name,
+                    name: generateNameByPath(path),
                     path
                 })
             }
@@ -68,7 +68,7 @@ export function collecVertexsByAst(ast){
                         start,
                         end
                     },
-                    name: key.name,
+                    name: generateNameByPath(path),
                     path
                 })
             }
@@ -83,7 +83,7 @@ export function collecVertexsByAst(ast){
                     start,
                     end
                 },
-                name: key.name,
+                name: generateNameByPath(path),
                 path
             })
         }

@@ -1,20 +1,9 @@
 import {getFuncVertexs} from "@/pages/cg/vertex";
 
-const {parse} = require('@babel/parser')
 const {getAst} = require('./common')
-const traverse = require('@babel/traverse').default;
-const generate = require('@babel/generator').default
 
 export const selectNodeConfig = {
     color:'red'
-}
-
-export const generateCode = (path)=>{
-    try{
-        return generate(path.node).code
-    } catch (e){
-
-    }
 }
 
 export function filterJsonByEntry({dotJson,entryFuncId}) {
