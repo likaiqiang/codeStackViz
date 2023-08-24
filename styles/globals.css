@@ -237,3 +237,14 @@ html{
   height: 2px;
   background-color: rgba(0,0,0,.3);
 }
+g.node{
+  cursor: pointer;
+}
+.adm-popover-menu-item{
+  cursor: pointer;
+  padding-left: 10px;
+}
+.adm-popover-menu-item-text{
+  padding: 7px 10px 7px 0;
+  font-size: 14px;
+}

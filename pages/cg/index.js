@@ -1,14 +1,9 @@
 import {getFuncVertexs} from "@/pages/cg/vertex";
 
 const {parse} = require('@babel/parser')
-const {getAst} = require('./utils')
+const {getAst} = require('./common')
 const traverse = require('@babel/traverse').default;
 const generate = require('@babel/generator').default
-const t = require('@babel/types')
-const tern = require("tern");
-const {collecVertexsByAst,getParsedParentFuncLoc,collectImportedModules,isFuncImported} = require('./vertex')
-
-const server = new tern.Server({});
 
 export const selectNodeConfig = {
     color:'red'

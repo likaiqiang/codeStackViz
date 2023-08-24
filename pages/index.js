@@ -135,6 +135,9 @@ export default function Home() {
                     draft.list.push(cacheEntry[filename])
                     draft.index = draft.index + 1
                 })
+                setModal(draft => {
+                    draft.list = exportVertexs
+                })
             }
             else {
                 setModal(draft => {
@@ -191,13 +194,13 @@ export default function Home() {
         }
     }
 
-    const renderPageSvg = ({entryFuncId,renderMaxLevel = 6})=>{
+    const renderPageSvg = ({entryFuncId,renderMaxLevel = 3})=>{
         const {current: config} = configRef
         let filteredDotJson = filterJsonByEntry({
             dotJson: config.dotJson,
             entryFuncId
         })
-
+        console.log('filteredDotJson.maxLevel',filteredDotJson.maxLevel);
         filteredDotJson = {
             ...filteredDotJson,
             statements: filteredDotJson.statements.filter(edge=>edge.level <= Math.min(renderMaxLevel, filteredDotJson.maxLevel))
@@ -206,6 +209,7 @@ export default function Home() {
         const {dot,nodes} = generateDotStr({
             filteredDotJson
         })
+
         const {renderSvg} = graphvizRef.current
 
         configRef.current = {
@@ -223,10 +227,10 @@ export default function Home() {
         <div className={'codeViewContainer'}>
             <Graphviz
                 className={'codeSvg'}
-                dot={dot}
                 popper={popperRef}
                 history={history}
                 ref={graphvizRef}
+                config={configRef.current}
                 onArrowClick={({type}) => {
                     let id = ''
                     if (type === 'back') {
@@ -235,7 +239,7 @@ export default function Home() {
                     if (type === 'forward') {
                         id = forward()
                     }
-                    onFilterDotJson({
+                    renderPageSvg({
                         entryFuncId: id
                     })
                 }}
@@ -243,15 +247,12 @@ export default function Home() {
                     const id = node.getAttribute("id");
                     onSelectNodeCode(id)
                 }}
-                onNodeDbClick={(node) => {
+                onContextMenuItemClick={(node) => {
                     const id = node.getAttribute("id");
-                    onFilterDotJson({
-                        entryFuncId: id,
-                        onGraphvizRenderEnd: ()=>{
-                            console.log('end');
-                            push(id)
-                            onSelectNodeCode(id)
-                        }
+                    renderPageSvg({
+                        entryFuncId: id
+                    }).then(()=>{
+                        push(id)
                     })
                 }}
                 onSettingClick={()=>{

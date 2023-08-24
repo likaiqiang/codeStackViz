@@ -5,6 +5,7 @@ import ClipLoader from "react-spinners/ClipLoader";
 import Whether from "@/components/Whether";
 import {selectNodeConfig} from '@/pages/cg'
 import DataFor from "@/components/DataFor";
+import {isVertexHasNext} from "@/pages/cg/common";
 
 let counter = 0;
 // eslint-disable-next-line no-plusplus
@@ -16,10 +17,11 @@ const Graphviz = (props,ref) => {
     const {
         className,
         onNodeClick = ()=>{},
-        onNodeDbClick = ()=>{},
+        onContextMenuItemClick = ()=>{},
         history = {},
         onArrowClick = ()=>{},
-        onSettingClick=()=>{}
+        onSettingClick=()=>{},
+        config = {}
     } = props
     const id = useMemo(getId, []);
     const eleRef = useRef()
@@ -28,18 +30,14 @@ const Graphviz = (props,ref) => {
     const [isRending,setIsRending] = useState(false)
 
 
-    // const getNodeId = (e)=>{
-    //     const perentEle = e.target.parentElement
-    //     if(perentEle?.classList.contains('node')){
-    //         return perentEle.getAttribute('id')
-    //     }
-    //     return ''
-    // }
-
     const actions = [
         {
             key: 'vertex',
-            text: 'vertex',
+            text: '【只看该节点】',
+            onClick(e){
+                onContextMenuItemClick(e.target.parentElement)
+                props.popper.current.hide()
+            }
         }
     ]
 
@@ -54,49 +52,42 @@ const Graphviz = (props,ref) => {
         return perentEle?.classList.contains('node')
     }
     const onClick = (e)=>{
-        clearTimeout(clickTimer)
-        clickTimer = setTimeout(()=>{
-            if(isNode(e)){
-                onselectNodeStyle(e.target.parentElement)
-                onNodeClick(e.target.parentElement)
-            }
-
-        },500)
+        if(isNode(e)){
+            onselectNodeStyle(e.target.parentElement)
+            onNodeClick(e.target.parentElement)
+        }
     }
 
     const onContextMenu = e=>{
         e.preventDefault();
-        if(props.popper &&　isNode(e)) {
-            const content = (
-                <div className={'adm-popover-inner'}>
-                    <DataFor list={actions} rowKey={item=>item.key}>
-                        {
-                            (item)=>{
-                                return (
-                                    <a className="adm-popover-menu-item adm-plain-anchor" onClick={()=>{
-                                        onselectNodeStyle(e.target.parentElement)
-                                        onNodeDbClick(e.target.parentElement)
-                                        props.popper.current.hide()
-                                    }}>
-                                        <div className="adm-popover-menu-item-text">{item.text}</div>
-                                    </a>
-                                )
+        if(props.popper && isNode(e)) {
+            const id = e.target.parentElement.getAttribute('id')
+            if(isVertexHasNext({
+                id,
+                statements: config.dotJson.statements
+            })){
+                const content = (
+                    <div className={'adm-popover-inner'}>
+                        <DataFor list={actions} rowKey={item=>item.key}>
+                            {
+                                (item)=>{
+                                    return (
+                                        <a className="adm-popover-menu-item" onClick={()=>{
+                                            item.onClick(e)
+                                        }}>
+                                            <div className="adm-popover-menu-item-text">{item.text}</div>
+                                        </a>
+                                    )
+                                }
                             }
-                        }
-                    </DataFor>
-                </div>
-            )
-            props.popper.current.show({
-                x: e.clientX, y: e.clientY
-            },content)
+                        </DataFor>
+                    </div>
+                )
+                props.popper.current.show({
+                    x: e.clientX, y: e.clientY
+                },content)
+            }
         }
-    }
-
-    const onDbClick = ({node})=>{
-        clearTimeout(clickTimer);
-        clickTimer = null;
-        onselectNodeStyle(node)
-        onNodeDbClick(node)
     }
 
     const renderSvg = (dot)=>{

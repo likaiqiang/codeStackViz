@@ -1,8 +1,7 @@
 import * as t from "@babel/types";
-import {cache} from "@/pages/cg/index";
 import tern from "tern";
 import {parse} from "@babel/parser";
-import {getAst} from "@/pages/cg/utils";
+import {getAst} from "@/pages/cg/common";
 const generate = require('@babel/generator').default
 
 const {default: traverse} = require("@babel/traverse");
@@ -353,6 +352,6 @@ export const getParsedParentFuncLoc = (path)=>{
     return {
 
     }
-
 }
+
 
