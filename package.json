@@ -42,6 +42,7 @@
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-markdown": "^8.0.7",
+    "react-modal": "^3.16.1",
     "react-no-ssr": "^1.1.0",
     "react-popper": "^2.3.0",
     "react-spinners": "^0.13.8",

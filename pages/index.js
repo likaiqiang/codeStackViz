@@ -5,8 +5,8 @@ import {
     cache,
     filterJsonByEntry,
     generateCode, generateDotStr,
-    genreateDotStrByCode, parseDotJson,
-} from "@/pages/cf";
+    genreateDotStrByCode, getConfigByCode, parseDotJson,
+} from "@/pages/cg";
 import Graphviz from "@/components/Graphviz";
 import CodeEditor from '@/components/Editor'
 import CustomPopper from "@/components/Popper";
@@ -15,18 +15,53 @@ import {useImmer} from "use-immer";
 import Chat from "@/components/Chat";
 import hotkeys from 'hotkeys-js';
 import 'bootstrap-icons/font/bootstrap-icons.min.css'
+import Modal from 'react-modal';
+import DataFor from "@/components/DataFor";
+import {useLocalStorage} from "@/pages/utils";
 
+function Settings(props){
+    const {list,activeIndex,onItemClick=()=>{}} = props
+    return (
+        <div className={'entryFuncList'}>
+            <div>请选择入口函数</div>
+            <DataFor list={list} key={(item)=> item.id}>
+                {
+                    (item,index)=>{
+                        return (
+                            <div className={['entryFuncItem', activeIndex === index ? 'active' : ''].join(' ')} onClick={()=>{
+                                onItemClick({
+                                    id: list[index].id,
+                                    index
+                                })
+
+                            }}>
+                                <div>{item.name}</div>
+                            </div>
+                        )
+                    }
+                }
+            </DataFor>
+        </div>
+    )
+}
+const filename = 'babel-parser'
 export default function Home() {
 
     const [dot, setDot] = useState(null)
     const [code, setCode] = useState('')
-    const [explain, setExplain] = useImmer({
-        loading: false,
-        text: ''
+
+    const [cacheEntry,setCacheEntry] = useLocalStorage('entryFuncName',{
+        [filename]:''
     })
+
     const [history, setHistory] = useImmer({
         list: [],
         index: -1
+    })
+    const [modal,setModal] = useImmer({
+        isOpen: false,
+        index: -1,
+        list: []
     })
     const graphvizRef = useRef()
     const push = (id) => {
@@ -38,14 +73,7 @@ export default function Home() {
             ]
         })
     }
-    // const pop = ()=>{
-    //     const lastId = history.list[history.list.length - 1]
-    //     setHistory(draft => {
-    //         draft.index = draft.index -1
-    //         draft.list = draft.list.slice(0,draft.index)
-    //     })
-    //     return lastId
-    // }
+
     const back = () => {
         const id = history.list[history.index - 1]
         setHistory(draft => {
@@ -74,26 +102,16 @@ export default function Home() {
         }
     }
 
-    const dotRef = useRef({
-        nodes: {},
-        filteredDotJson: {},
-        importedModules: {},
-        funcDecVertexs: [],
-        dotJson:{}
-    })
+    // const dotRef = useRef({
+    //     nodes: {},
+    //     filteredDotJson: {},
+    //     importedModules: {},
+    //     funcDecVertexs: [],
+    //     dotJson:{}
+    // })
+    const configRef = useRef()
     const selectCodeRef = useRef('')
-    const renderDot = ({dot, nodes, filteredDotJson, dotJson,importedModules, funcDecVertexs}) => {
-        setDot(dot)
-        dotRef.current = {
-            ...dotRef.current,
-            nodes,
-            importedModules,
-            funcDecVertexs,
-            filteredDotJson,
-            dotJson
-        }
-    }
-    const filename = 'babel-parser'
+
     useEffect(() => {
         const controller = new AbortController()
         let promise = fetch(`/api/get_bundle?filename=${filename}`, {
@@ -103,35 +121,27 @@ export default function Home() {
             },
             signal: controller.signal
         }).then(res => res.json()).then(({bundle}) => {
-            return genreateDotStrByCode({code: bundle, filename})
-        }).then(({dot, nodes, filteredDotJson, selectNode}) => {
-            setCode(
-                generateCode(selectNode.path)
-            )
-            setHistory(draft => {
-                draft.list.push(selectNode.id)
-                draft.index = draft.index + 1
-            })
-            const {importedModules,funcDecVertexs,dotJson} = cache[filename]
-            const {maxLevel} = filteredDotJson
-            if(maxLevel > 6){
-                dot = generateDotStr({
-                    selectNodeId: selectNode.id,
-                    filteredDotJson:{
-                        ...filteredDotJson,
-                        statements: filteredDotJson.statements.filter(node=>node.level <= 6)
-                    }
-                }).dot
+            return getConfigByCode({code: bundle, filename})
+        }).then((config) => {
+            console.log('config',config);
+            configRef.current = config
+
+            const {exportVertexs} = config
+            if(cacheEntry[filename]){
+                renderPageSvg({
+                    entryFuncId: cacheEntry[filename]
+                })
+                setHistory(draft => {
+                    draft.list.push(cacheEntry[filename])
+                    draft.index = draft.index + 1
+                })
             }
-            renderDot({
-                dot,
-                dotJson,
-                nodes,
-                selectNode,
-                filteredDotJson,
-                importedModules,
-                funcDecVertexs
-            })
+            else {
+                setModal(draft => {
+                    draft.isOpen = true
+                    draft.list = exportVertexs
+                })
+            }
         })
         return () => {
             controller.abort()
@@ -151,9 +161,9 @@ export default function Home() {
     }
 
     const onFilterDotJson = ({entryFuncId,onGraphvizRenderEnd = ()=>{}}) => {
-        const {current: dotCurrent} = dotRef
+        const {current: config} = configRef
         const filteredDotJson = filterJsonByEntry({
-            dotJson: dotCurrent.dotJson,
+            dotJson: config.dotJson,
             entryFuncId
         })
         const {dot} = generateDotStr({
@@ -167,58 +177,134 @@ export default function Home() {
     }
 
     const onSelectNodeCode = (id)=>{
-        const {current: dotCurrent} = dotRef
-        const targetNode = dotCurrent.nodes[id]
+        const {current: config} = configRef
+        const targetNode = config.nodes[id]
         const code = (targetNode.npm ? generateCode(targetNode.npmPath) : '') + '\n' + generateCode(targetNode.path)
         setCode(code)
+    }
+    const onCloseModal = ()=>{
+        if(modal.index > -1) setModal(draft => {
+            draft.isOpen = false
+        })
+        else {
+            // keeping
+        }
+    }
+
+    const renderPageSvg = ({entryFuncId,renderMaxLevel = 6})=>{
+        const {current: config} = configRef
+        let filteredDotJson = filterJsonByEntry({
+            dotJson: config.dotJson,
+            entryFuncId
+        })
+
+        filteredDotJson = {
+            ...filteredDotJson,
+            statements: filteredDotJson.statements.filter(edge=>edge.level <= Math.min(renderMaxLevel, filteredDotJson.maxLevel))
+        }
+
+        const {dot,nodes} = generateDotStr({
+            filteredDotJson
+        })
+        const {renderSvg} = graphvizRef.current
+
+        configRef.current = {
+            ...configRef.current,
+            dot,
+            nodes
+        }
+
+        return renderSvg(dot).then(()=>Promise.resolve({dot,nodes}))
     }
 
     const popperRef = useRef()
     const chatRef = useRef()
     return (
         <div className={'codeViewContainer'}>
-            <Whether value={dot}>
-                <Graphviz
-                    className={'codeSvg'}
-                    dot={dot}
-                    popper={popperRef}
-                    history={history}
-                    ref={graphvizRef}
-                    onArrowClick={({type}) => {
-                        let id = ''
-                        if (type === 'back') {
-                            id = back()
+            <Graphviz
+                className={'codeSvg'}
+                dot={dot}
+                popper={popperRef}
+                history={history}
+                ref={graphvizRef}
+                onArrowClick={({type}) => {
+                    let id = ''
+                    if (type === 'back') {
+                        id = back()
+                    }
+                    if (type === 'forward') {
+                        id = forward()
+                    }
+                    onFilterDotJson({
+                        entryFuncId: id
+                    })
+                }}
+                onNodeClick={(node) => {
+                    const id = node.getAttribute("id");
+                    onSelectNodeCode(id)
+                }}
+                onNodeDbClick={(node) => {
+                    const id = node.getAttribute("id");
+                    onFilterDotJson({
+                        entryFuncId: id,
+                        onGraphvizRenderEnd: ()=>{
+                            console.log('end');
+                            push(id)
+                            onSelectNodeCode(id)
                         }
-                        if (type === 'forward') {
-                            id = forward()
-                        }
-                        onFilterDotJson({
-                            entryFuncId: id
-                        })
-                    }}
-                    onNodeClick={(node) => {
-                        const id = node.getAttribute("id");
-                        onSelectNodeCode(id)
-                    }}
-                    onNodeDbClick={(node) => {
-                        const id = node.getAttribute("id");
-                        onFilterDotJson({
-                            entryFuncId: id,
-                            onGraphvizRenderEnd: ()=>{
-                                console.log('end');
-                                push(id)
-                                onSelectNodeCode(id)
-                            }
-                        })
-                    }}
-                />
-            </Whether>
+                    })
+                }}
+                onSettingClick={()=>{
+                    setModal(draft => {
+                        draft.isOpen = true
+                    })
+                }}
+            />
             <div className={'codeView'}>
                 <CodeEditor value={code} onExplainClick={onExplainClick}/>
                 <div className={'codeExplainText'}>
                     <Chat ref={chatRef}/>
                 </div>
             </div>
+            <Modal
+                isOpen={modal.isOpen}
+                ariaHideApp={false}
+                style={{
+                    content:{
+                        top: '50%',
+                        left: '50%',
+                        right: 'auto',
+                        bottom: 'auto',
+                        marginRight: '-50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: "30%"
+                    },
+                    overlay: {
+                        backgroundColor: 'rgba(0,0,0,.4)'
+                    }
+                }}
+                shouldCloseOnOverlayClick={true}
+                onRequestClose={onCloseModal}
+            >
+                <Settings list={modal.list} activeIndex={modal.index} onItemClick={({id,index})=>{
+                    renderPageSvg({
+                        entryFuncId: id
+                    }).then(()=>{
+                        setModal(draft => {
+                            draft.index = index
+                            draft.isOpen = false
+                        })
+                        setHistory(draft => {
+                            draft.list = [id]
+                            draft.index = 0
+                        })
+                        setCacheEntry({
+                            ...cacheEntry,
+                            [filename]: id
+                        })
+                    })
+                }}/>
+            </Modal>
             {
                 ReactDOM.createPortal(
                     <CustomPopper ref={popperRef}/>,

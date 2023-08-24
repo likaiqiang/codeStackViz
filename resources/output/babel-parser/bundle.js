@@ -14168,9 +14168,5 @@ function getParserClass(pluginsFromOptions) {
 
 export { parse, parseExpression, tokTypes };
 
-function jsCodeViewEntryFunc(){
-  parse()
-}
-
 
 

@@ -1,6 +1,13 @@
-import t from "@babel/types";
+import * as t from "@babel/types";
+import {cache} from "@/pages/cg/index";
+import tern from "tern";
+import {parse} from "@babel/parser";
+import {getAst} from "@/pages/cg/utils";
+const generate = require('@babel/generator').default
 
 const {default: traverse} = require("@babel/traverse");
+
+const server = new tern.Server({});
 
 export function collecVertexsByAst(ast){
     const vertexs = []
@@ -84,6 +91,163 @@ export function collecVertexsByAst(ast){
     })
     return vertexs
 }
+
+export function genreateDotJson(ast,code){
+    // let dot = "digraph G {\n";
+    const dotJson = {
+        node: {fillcolor: "#eeeeee", style: "filled,rounded", shape: "rect"},
+
+        statements:[]
+    }
+
+    const funcDecVertexs = collecVertexsByAst(ast)
+    const importedModules = collectImportedModules(ast)
+    server.addFile("example.js", code);
+
+    server.flush(()=> {
+        traverse(ast, {
+            CallExpression(path) {
+                const {end: calleeEnd} = path.node.callee
+                const query = {
+                    type: "definition",
+                    file: "example.js",
+                    end: calleeEnd,
+                };
+                server.request({ query }, (err, data = {}) => {
+                    if(Object.keys(data).length){
+                        const {start,end} = data
+                        let callVertex = funcDecVertexs.find(vertex=> vertex.loc.start === start && vertex.loc.end === end)
+                        const parentFunc = path.getFunctionParent()
+                        if(parentFunc){
+                            const {start: parentFuncStart ,end: parentFuncEnd} = getParsedParentFuncLoc(path)
+                            if(parentFuncStart && parentFuncEnd){
+                                const parentFuncVertex = funcDecVertexs.find(vertex=> vertex.loc.start === parentFuncStart && vertex.loc.end === parentFuncEnd)
+
+                                if(!callVertex){
+                                    const isFuncFromNpm = isFuncImported(path,importedModules)
+                                    if(isFuncFromNpm){
+                                        callVertex = {
+                                            npm: true,
+                                            id: isFuncFromNpm.id,
+                                            loc: isFuncFromNpm.loc,
+                                            name: isFuncFromNpm.localName + ' (npm)',
+                                            path,
+                                            npmPath: isFuncFromNpm.path
+                                        }
+                                    }
+                                }
+                                if(callVertex && parentFuncVertex){
+                                    dotJson.statements.push({
+                                        head:{
+                                            id: parentFuncVertex.id,
+                                            path: parentFuncVertex.path,
+                                            attrs:{
+                                                label: parentFuncVertex.name,
+                                                id: parentFuncVertex.id
+                                            }
+                                        },
+                                        tail:{
+                                            id: callVertex.id,
+                                            path: callVertex.path,
+                                            attrs:{
+                                                id: callVertex.id,
+                                                label: callVertex.name
+                                            },
+                                            npm: !!callVertex.npm,
+                                            npmPath: callVertex.npmPath
+                                        },
+                                        attributes:{}
+                                    })
+                                }
+
+                            }
+                        }
+                    }
+
+                })
+            }
+        })
+    })
+
+    return {
+        dotJson,
+        funcDecVertexs,
+        importedModules
+    }
+}
+
+
+export function getFuncVertexs({ast}){
+
+    const exportNames = new Set()
+    const exportVertexs = []
+    traverse(ast,{
+        ExportSpecifier(path){
+            exportNames.add(path.node.local.name)
+        },
+        ExportDefaultDeclaration(path){
+            exportNames.add(path.node.declaration.name)
+        }
+    })
+
+    ast.program.body.push(
+        t.functionDeclaration(
+            t.identifier("jsCodeViewEntryFunc"),
+            [],
+            t.blockStatement(
+                [...exportNames].map(name=>{
+                    return t.expressionStatement(t.identifier(name))
+                })
+            )
+        )
+    )
+
+    const code = generate(ast).code
+    const newAst = getAst({code})
+
+    const {dotJson,importedModules,funcDecVertexs} = genreateDotJson(newAst,code)
+
+    const server = new tern.Server({})
+    server.addFile("entry.js", code);
+
+    traverse(newAst,{
+        FunctionDeclaration(path){
+            if(path.node.id.name === 'jsCodeViewEntryFunc'){
+                server.flush(()=>{
+                    path.traverse({
+                        Identifier(p){
+                            server.request({
+                                query:{
+                                    type: "definition",
+                                    file: "entry.js",
+                                    end: p.node.end
+                                }
+                            },(err,data={})=>{
+                                const vertex = funcDecVertexs.find(node=> node.loc.start === data.start && node.loc.end === data.end)
+                                if(vertex && vertex.name !== 'jsCodeViewEntryFunc') exportVertexs.push(vertex)
+                            })
+                        }
+                    })
+                })
+            }
+        }
+    })
+    traverse(newAst,{
+        FunctionDeclaration(path){
+            if (path.node.id.name === "jsCodeViewEntryFunc") {
+                path.remove()
+            }
+        }
+    })
+    return {
+        exportVertexs,
+        dotJson,
+        importedModules,
+        funcDecVertexs,
+        ast: newAst
+    }
+}
+
 
 export const collectImportedModules = (ast)=>{
     const importedModules = {}

@@ -1,10 +1,9 @@
 import * as d3 from "d3-graphviz";
 import {selectAll,select} from "d3-selection";
-import transition from 'd3-transition'
 import {useEffect, useMemo, useRef, forwardRef, useImperativeHandle, useState} from "react";
 import ClipLoader from "react-spinners/ClipLoader";
 import Whether from "@/components/Whether";
-import {selectNodeConfig} from '@/pages/cf'
+import {selectNodeConfig} from '@/pages/cg'
 import DataFor from "@/components/DataFor";
 
 let counter = 0;
@@ -15,12 +14,12 @@ let clickTimer = null
 
 const Graphviz = (props,ref) => {
     const {
-        dot,
         className,
         onNodeClick = ()=>{},
         onNodeDbClick = ()=>{},
         history = {},
         onArrowClick = ()=>{},
+        onSettingClick=()=>{}
     } = props
     const id = useMemo(getId, []);
     const eleRef = useRef()
@@ -122,9 +121,7 @@ const Graphviz = (props,ref) => {
         if(!graphvizRef.current){
             graphvizRef.current = d3.graphviz(`#${eleRef.current.id}`, {fit:true,zoom:true})
         }
-        renderSvg(dot).then(r =>{
-            // console.log('121212121212');
-        } )
+
         return ()=>{
             graphvizRef.current.destroy()
         }
@@ -141,14 +138,15 @@ const Graphviz = (props,ref) => {
         opacity: 0.4,
         cursor: "auto"
     }
+    console.log('history',history);
     return (
         <div className={className}>
             <div className="controlIcons">
                 <i
                    className="bi bi-arrow-left"
-                   style={history.index === 0 ? disabledStyle : {}}
+                   style={history.index <= 0 ? disabledStyle : {}}
                    onClick={()=>{
-                       if(history.index === 0) return
+                       if(history.index <=0) return
                        onArrowClick({
                            type:'back'
                        })
@@ -172,6 +170,9 @@ const Graphviz = (props,ref) => {
                 onClick={onClick}
                 onContextMenu={onContextMenu}
             />
+            <div className="controlPanel">
+                <i className={'bi bi-gear'} onClick={onSettingClick}/>
+            </div>
             <Whether value={isRending}>
                 <div className="loading">
                     <ClipLoader
