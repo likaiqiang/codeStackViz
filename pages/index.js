@@ -17,32 +17,8 @@ import 'bootstrap-icons/font/bootstrap-icons.min.css'
 import Modal from 'react-modal';
 import DataFor from "@/components/DataFor";
 import {useLocalStorage} from "@/pages/utils";
+import Settings from "@/components/Settings";
 
-function Settings(props){
-    const {list,activeIndex,onItemClick=()=>{}} = props
-    return (
-        <div className={'entryFuncList'}>
-            <div>请选择入口函数</div>
-            <DataFor list={list} key={(item)=> item.id}>
-                {
-                    (item,index)=>{
-                        return (
-                            <div className={['entryFuncItem', activeIndex === index ? 'active' : ''].join(' ')} onClick={()=>{
-                                onItemClick({
-                                    id: list[index].id,
-                                    index
-                                })
-
-                            }}>
-                                <div>{item.name}</div>
-                            </div>
-                        )
-                    }
-                }
-            </DataFor>
-        </div>
-    )
-}
 const filename = 'babel-parser'
 export default function Home() {
 
