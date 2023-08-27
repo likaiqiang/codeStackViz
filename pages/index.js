@@ -142,7 +142,6 @@ export default function Home() {
             dotJson: config.dotJson,
             entryFuncId
         })
-        console.log('filteredDotJson.maxLevel',filteredDotJson.maxLevel);
         filteredDotJson = {
             ...filteredDotJson,
             statements: filteredDotJson.statements.filter(edge=>edge.level <= Math.min(renderMaxLevel, filteredDotJson.maxLevel))
