@@ -16,6 +16,7 @@
     "@babel/types": "^7.22.5",
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
+    "@fingerprintjs/fingerprintjs": "^4.0.1",
     "@monaco-editor/react": "^4.5.1",
     "@mui/icons-material": "latest",
     "@mui/lab": "latest",
@@ -41,6 +42,7 @@
     "immer": "^10.0.2",
     "jsdom": "^22.1.0",
     "langchain": "^0.0.125",
+    "lodash-es": "^4.17.21",
     "monaco-editor": "^0.41.0",
     "next": "13.4.12",
     "notistack": "^3.0.1",
@@ -68,6 +70,7 @@
     "@types/react": "18.2.20",
     "babel-cli": "^6.26.0",
     "babel-preset-es2015": "^6.24.1",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "nodegit": "^0.27.0"
   }
 }
