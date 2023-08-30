@@ -15,18 +15,33 @@ import Chat from "@/components/Chat";
 import hotkeys from 'hotkeys-js';
 import 'bootstrap-icons/font/bootstrap-icons.min.css'
 import Modal from 'react-modal';
-import DataFor from "@/components/DataFor";
 import {useLocalStorage} from "@/pages/utils";
 import Settings from "@/components/Settings";
+import {getBundle} from "@/api";
 
 const filename = 'babel-parser'
+
+const generateCache = ({owner,repo,key,name ='',subPath='', entryFuncId})=>{
+    return `${key}@${encodeURIComponent(owner)}@${encodeURIComponent(repo)}` + (name ? `@${encodeURIComponent(name)}` : '') + (subPath ? `@${encodeURIComponent(subPath)}` : '') + `@${entryFuncId}`
+}
+
+const parseCacheStr = (str)=>{
+    const [owner,repo,name,subPath,entryFuncId] = str.split('@').map(s=> decodeURIComponent(s))
+    return {
+        owner,
+        repo,
+        name: name || '',
+        subPath,
+        entryFuncId
+    }
+}
+
+
 export default function Home() {
 
     const [code, setCode] = useState('')
 
-    const [cacheEntry,setCacheEntry] = useLocalStorage('entryFuncName',{
-        [filename]:''
-    })
+    const [cacheEntry,setCacheEntry] = useLocalStorage('entryFuncName','')
 
     const [history, setHistory] = useImmer({
         list: [],
@@ -78,43 +93,40 @@ export default function Home() {
     const configRef = useRef()
 
     useEffect(() => {
-        const controller = new AbortController()
-        let promise = fetch(`/api/get_bundle?filename=${filename}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            signal: controller.signal
-        }).then(res => res.json()).then(({bundle}) => {
-            return getConfigByCode({code: bundle, filename})
-        }).then((config) => {
-            console.log('config',config);
-            configRef.current = config
+        // let promise = null
+        // const controller = new AbortController()
+        // if(cacheEntry){
+        //     const repoConfig = parseCacheStr(cacheEntry)
+        //
+        //     promise = getBundle({params: repoConfig,signal: controller.signal}).then(res => res.json()).then(({bundle}) => {
+        //         return getConfigByCode({code: bundle, filename: cacheEntry})
+        //     }).then(config=>{
+        //         console.log('config',config);
+        //         configRef.current = config
+        //         const {exportVertexs} = config
+        //
+        //         renderPageSvg({
+        //             entryFuncId: repoConfig.entryFuncId
+        //         })
+        //         setHistory(draft => {
+        //             draft.list.push(repoConfig.entryFuncId)
+        //             draft.index = draft.index + 1
+        //         })
+        //     })
+        // }
+        // else{
+        //     setModal(draft => {
+        //         draft.isOpen = true
+        //     })
+        // }
 
-            const {exportVertexs} = config
-            if(cacheEntry[filename]){
-                renderPageSvg({
-                    entryFuncId: cacheEntry[filename]
-                })
-                setHistory(draft => {
-                    draft.list.push(cacheEntry[filename])
-                    draft.index = draft.index + 1
-                })
-                setModal(draft => {
-                    draft.list = exportVertexs
-                })
-            }
-            else {
-                setModal(draft => {
-                    draft.isOpen = true
-                    draft.list = exportVertexs
-                })
-            }
+        // return () => {
+        //     controller.abort()
+        //     promise = null
+        // }
+        setModal(draft => {
+            draft.isOpen = true
         })
-        return () => {
-            controller.abort()
-            promise = null
-        }
     }, []);
 
     useEffect(() => {
@@ -245,7 +257,8 @@ export default function Home() {
                             [filename]: id
                         })
                     })
-                }}/>
+                }}
+            />
             </Modal>
             {
                 ReactDOM.createPortal(

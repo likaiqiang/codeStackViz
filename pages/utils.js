@@ -37,3 +37,17 @@ export function useLocalStorage(key, initialValue) {
     };
     return [storedValue, setValue];
 }
+export const waitForPromise = async ({promise,timeout=1000,waitCallBack=()=>{}})=>{
+    let timer = null
+    const timeoutPromise = new Promise(()=>{
+        timer = setTimeout(waitCallBack,timeout)
+    })
+    try {
+        const result = await Promise.race([promise, timeoutPromise]);
+        clearTimeout(timer);
+        return result
+    } catch (err){
+        clearTimeout(timer)
+        throw err
+    }
+}

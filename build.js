@@ -27,7 +27,7 @@ function transformDir(srcDir, outDir) {
             transformDir(srcPath, path.join(outDir,item));
         } else {
             const ext = path.extname(srcPath)
-            if (!(ext === '.json' && path.basename(srcPath) === 'package.json')){
+            if (ext === '.js' || ext === '.ts'){
                 const result = babel.transformFileSync(srcPath, {
                     plugins:[
                         ["@babel/plugin-transform-typescript",{allowDeclareFields: true}]

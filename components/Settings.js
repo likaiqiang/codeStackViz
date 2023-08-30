@@ -12,13 +12,9 @@ import { SnackbarProvider, useSnackbar } from 'notistack';
 import {Autocomplete} from "@mui/material";
 import {useMemoizedFn} from "ahooks/lib";
 import {debounce} from 'lodash-es'
-import FingerprintJS from '@fingerprintjs/fingerprintjs';
-
-async function getFingerprint() {
-    const fp = await FingerprintJS.load();
-    const result = await fp.get();
-    return result.visitorId;
-}
+import Modal from 'react-modal';
+import {getBundle} from "@/api";
+import {waitForPromise} from "@/pages/utils";
 
 
 const TreeCustomItem = ({list = [],parentIndex = []})=>{
@@ -48,6 +44,7 @@ export default (props)=>{
     const [treeData,setTreeData] = useState([])
     const [options,setOptions] = useState([])
     const [loading,setLoading] = useState(false)
+    const [confirmLoading,setConfirmLoading] = useState(false)
     const githubRef = useRef({})
     const { enqueueSnackbar } = useSnackbar();
 
@@ -66,17 +63,13 @@ export default (props)=>{
     );
 
     const fetchGHContent = ({owner,repo,name,subPath=''})=>{
-        setLoading(true)
         githubRef.current = {
             owner,
             repo,
             name,
             subPath
         }
-        return fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${subPath}${name ? ('?ref=' + name) : ''}`).then(res=>res.json()).then((res)=>{
-            setLoading(false)
-            return res
-        })
+        return fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${subPath}${name ? ('?ref=' + name) : ''}`).then(res=>res.json())
     }
 
     const onSearchGh = ({language=[],keyword})=>{
@@ -108,17 +101,6 @@ export default (props)=>{
 
     }
 
-    const getBundle = (params={},headers={})=>{
-        const queryStr = Object.keys(params).reduce((acc,key,i)=>{
-            if(i === Object.keys(params).length - 1){
-                return `${key}=${params[key]}`
-            }
-            return `${key}=${params[key]}&`
-        },'')
-        return fetch(`/api/get_bundle?${queryStr}`,{
-            headers
-        })
-    }
     return (
         <SnackbarProvider maxSnack={3}>
             <div className={'libSearch'}>
@@ -131,10 +113,14 @@ export default (props)=>{
                         onChange={(e,value)=>{
                             if(value){
                                 const {owner,name} = value
+                                setLoading(true)
                                 fetchGHContent({
                                     owner: owner.login,
                                     repo: name
-                                }).then(setTreeData)
+                                }).then(res=>{
+                                    setLoading(false)
+                                    setTreeData(res)
+                                })
                             }
                         }}
                         renderInput={(params) => <TextField {...params} label="please input a github repo keyword" />}
@@ -156,7 +142,10 @@ export default (props)=>{
                                             const isNodeExpand = nodeIds.includes(nodeDataSet.url)
 
                                             if(isNodeExpand && (!nodeData.children || nodeData.children.length === 0)){
-                                                fetch(nodeData.url).then(res=>res.json()).then(res=>{
+                                                fetchGHContent({
+                                                    ...githubRef.current,
+                                                    subPath: nodeData.path
+                                                }).then(res=>{
                                                     nodeData.children = res
                                                     setTreeData(
                                                         finishDraft(draft)
@@ -170,7 +159,10 @@ export default (props)=>{
                                             if(nodeData.type ==='file'){
                                                 const filePath = nodeData.path
                                                 if(filePath.endsWith('.js') || filePath.endsWith('.ts')){
-
+                                                    githubRef.current = {
+                                                        ...githubRef.current,
+                                                        subPath:filePath
+                                                    }
                                                 }
                                                 else {
                                                     enqueueSnackbar('invalid javascript file')
@@ -184,12 +176,19 @@ export default (props)=>{
                                         <Button
                                             variant="contained"
                                             color="success"
-                                            disabled={loading}
-                                            onClick={e=>{
-                                                getFingerprint().then(visitorId=>{
-                                                    getBundle(githubRef.current,{
-                                                        Authorization: visitorId
-                                                    })
+                                            disabled={confirmLoading}
+                                            onClick={()=>{
+                                                setConfirmLoading(true)
+                                                waitForPromise({
+                                                    promise: getBundle({
+                                                        params: githubRef.current
+                                                    }),
+                                                    waitCallBack(){
+                                                        enqueueSnackbar('please wait')
+                                                    }
+                                                }).then(res=>{
+                                                    setConfirmLoading(false)
+                                                    console.log('res',res);
                                                 })
                                             }}
                                         >

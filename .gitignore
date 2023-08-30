@@ -34,8 +34,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 /dd/
+/public/resources/**
 /.idea/
 yarn.lock
 .env
 /example/
 **/_op/**
+/dd/dd.js
+

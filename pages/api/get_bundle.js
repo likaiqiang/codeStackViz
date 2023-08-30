@@ -2,6 +2,7 @@ import path from 'path'
 import fs from 'fs/promises'
 import Git from 'nodegit'
 import rollup from "@/rollup";
+import {rimraf} from 'rimraf'
 
 const expireConfig = {
     timestamp: 20000
@@ -22,7 +23,7 @@ async function deleteFileOrFolder(filePath) {
         if (stat.isDirectory()) {
             const files = await fs.readdir(filePath);
             for (const file of files) {
-                await deleteFileOrFolder(path.join(filePath, file));
+                await rimraf(path.join(filePath, file))
             }
             await fs.rmdir(filePath);
         } else {
@@ -41,8 +42,8 @@ const delay = (timer=1000)=>{
 }
 
 class Cache {
-    resourcesFolderPath = path.join(__dirname,'../../resources2')
-    expireFilePath = path.join(__dirname,'./expire.json')
+    resourcesFolderPath = path.join(process.cwd(),'public/resources')
+    expireFilePath = path.join(process.cwd(),'public/expire.json')
 
     constructor() {
         const checkExpired = ()=>{
@@ -51,10 +52,10 @@ class Cache {
                 checkExpired()
             })
         }
-        checkExpired()
+        // checkExpired()
     }
     getRepoPath({owner,repo,key,name =''}){
-        return path.join(this.resourcesFolderPath,`${key}-${owner}-${repo}` + name ? `-${name}` : '')
+        return path.join(this.resourcesFolderPath,`${key}@${encodeURIComponent(owner)}@${encodeURIComponent(repo)}` + (name ? `@${encodeURIComponent(name)}` : ''))
     }
     cloneRepo({owner,repo,key,name =''}){
         const repoPath = this.getRepoPath({
@@ -63,7 +64,10 @@ class Cache {
             name,
             key
         })
-        return Git.Clone(`https://github.com/${owner}/${repo}.git` + name ? ` -b ${name}` : '', repoPath )
+        return Git.Clone(`https://github.com/${owner}/${repo}.git` + (name ? ` -b ${name}` : ''), repoPath ).then(()=>{
+            const gitDir = path.join(repoPath, '.git')
+            return rimraf(gitDir)
+        })
     }
     hasRepo({owner,repo,key,name =''}){
         const repoPath = this.getRepoPath({
@@ -82,7 +86,7 @@ class Cache {
             key
         })
         return checkFileExists(
-            path.join(repoPath,subPath)
+            path.join(repoPath,`./__bundle/${encodeURIComponent(subPath)}.js`)
         )
     }
     generateBundle({owner,repo,key,name ='',subPath = ''}){
@@ -98,7 +102,8 @@ class Cache {
             }
             return rollup({
                 entry: path.join(repoPath,subPath),
-                output: path.join(repoPath,`./_bundle/${subPath}.js`)
+                output: path.join(repoPath,`./__bundle/${encodeURIComponent(subPath)}.js`),
+                repoPath
             })
         })
     }
@@ -127,7 +132,7 @@ class Cache {
                     subPath
                 })
                 return fs.readFile(
-                    path.join(repoPath,subPath)
+                    path.join(repoPath,`./__bundle/${subPath}.js`)
                 )
             })
         })
@@ -157,14 +162,17 @@ class Cache {
                 if(stat.isDirectory()){
                     const folderName = path.basename(fullPath);
                     if(Date.now() > expireData[folderName]){
-                        await deleteFileOrFolder(fullPath)
+                        await rimraf(fullPath)
                     }
                     else {
-                        const bundleFiles = await fs.readdir(path.join(fullPath,'_bundle'))
-                        for(let bundle of bundleFiles){
-                            const bundleFullPath = path.join(fullPath,'_bundle',bundle)
-                            if(Date.now() > expireData[bundleFullPath]){
-                                await deleteFileOrFolder(bundleFullPath)
+                        const bundlePath = path.join(fullPath,'__bundle')
+                        if( await checkFileExists(bundlePath)){
+                            const bundleFiles = await fs.readdir(bundlePath)
+                            for(let bundle of bundleFiles){
+                                const bundleFullPath = path.join(fullPath,'__bundle',bundle)
+                                if(Date.now() > expireData[bundleFullPath]){
+                                    await rimraf(bundleFullPath)
+                                }
                             }
                         }
                     }
@@ -177,17 +185,16 @@ class Cache {
 
 const cacheManage = new Cache()
 
-async function handler(req,res){
-    const {query,header} = req
+export default async function handler(req,res){
+    const {query,headers} = req
     const {owner,repo,name,subPath} = query
-    const {Authorization} = header
-    return res.status(200).json(
-        cacheManage.getBundle({
-            owner,
-            repo,
-            key: Authorization,
-            name,
-            subPath
-        })
-    )
+    const {authorization} = headers
+    const bundle = await cacheManage.getBundle({
+        owner,
+        repo,
+        key: authorization,
+        name,
+        subPath
+    })
+    return res.status(200).json({bundle: bundle + ''})
 }
