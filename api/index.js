@@ -6,7 +6,7 @@ async function getFingerprint() {
     return result.visitorId;
 }
 
-export const getBundle = async ({params={},headers={},signal})=>{
+export const submitTask = async ({params={},headers={},signal})=>{
     const queryStr = Object.keys(params).reduce((acc,key,i)=>{
         if(params[key]){
             if(i === Object.keys(params).length - 1){
@@ -17,7 +17,18 @@ export const getBundle = async ({params={},headers={},signal})=>{
         return acc
     },'')
     const visitorId = await getFingerprint()
-    return fetch(`/api/get_bundle?${queryStr}`,{
+    return fetch(`/api/submit_task?${queryStr}`,{
+        headers:{
+            Authorization: visitorId,
+            ...headers
+        },
+        signal
+    })
+}
+
+export const getStatus = async ({headers={},signal})=>{
+    const visitorId = await getFingerprint()
+    return fetch('/api/query_status',{
         headers:{
             Authorization: visitorId,
             ...headers

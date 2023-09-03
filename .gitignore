@@ -41,4 +41,7 @@ yarn.lock
 /example/
 **/_op/**
 /dd/dd.js
+/dd.js
 
+/public/resources/
+/public/recommend/

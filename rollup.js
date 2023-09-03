@@ -1,28 +1,38 @@
 const resolve = require('@rollup/plugin-node-resolve'); // 用于解析 node_modules 中的模块
 const json = require('@rollup/plugin-json') ;
+const commonjs = require('@rollup/plugin-commonjs')
 const {rollup} = require('rollup');
 const path = require('path')
 const external = require("@yelo/rollup-node-external");
 const fs = require("fs");
-const babel = require("@babel/core");
+const babel = require("@rollup/plugin-babel");
+const babelCore = require('@babel/core')
+const typescript = require('@rollup/plugin-typescript')
+const minimatch = require('minimatch')
+// const { convertLogLevel, createHandler, createLogger, LogLevel } = require("typescript-paths")
+// const ts = require('typescript')
+// const webpack = require('webpack');
 
-const transformTypescriptPlugin = ()=>{
-    return {
-        name:'transformTypescriptPlugin',
-        transform(code,id){
-            if (!/\.tsx?$/.test(id)) return null;
-            const result = babel.transformFileSync(id, {
-                plugins:[
-                    ["@babel/plugin-transform-typescript",{allowDeclareFields: true}]
-                ]
-            })
-            return {
-                code: result.code,
-                map: result.map
-            }
-        }
-    }
-}
+
+
+// const transformTypescriptPlugin = ()=>{
+//     return {
+//         name:'transformTypescriptPlugin',
+//         transform(code,id){
+//             if (!/\.tsx?$/.test(id)) return null;
+//             const result = babelCore.transformFileSync(id, {
+//                 plugins:[
+//                     ["@babel/plugin-transform-typescript",{allowDeclareFields: true}]
+//                 ]
+//             })
+//             return {
+//                 code: result.code,
+//                 map: result.map
+//             }
+//         }
+//     }
+// }
+
 
 // function transformDir(srcDir, outDir) {
 //     // 遍历目录中的所有文件和子目录
@@ -56,40 +66,76 @@ const transformTypescriptPlugin = ()=>{
 //     });
 // }
 
-
-function findPackageJson(filepath) {
-    let currentDir = path.dirname(filepath);
+function findFileUpwards({fileName = 'tsconfig.json',startFilePath}) {
+    let currentDir = path.dirname(startFilePath)
     while (currentDir !== path.parse(currentDir).root) {
-        const packageJsonPath = path.join(currentDir, 'package.json');
+        const packageJsonPath = path.join(currentDir, fileName);
         if (fs.existsSync(packageJsonPath)) {
-            return currentDir;
+            return currentDir
         }
         currentDir = path.join(currentDir, '..');
     }
     return null;
 }
 
-const rollupBuild = ({entry,output,repoPath})=>{
-    // if(entry.endsWith('.ts')){
-    //     const pkgRoot = findPackageJson(entry)
-    //     // rimrafSync(path.join(repoPath,'__op'))
-    //     // transformDir(
-    //     //     pkgRoot,
-    //     //     path.join(repoPath,'__op')
-    //     // )
-    // }
+function getmatchedAlias(path,aliases){
+    for(let alias of Object.keys(aliases)){
+        const reg = new RegExp(`^${alias.replace(/\*/g, '.*')}`)
+        if(reg.test(path)) return aliases[alias]
+    }
+    return null
+}
 
-    rollup({
-        // input: resourceEntryFile,
+
+const rollupBuild = ({entry,output})=>{
+
+    const tsConfigPathDir = findFileUpwards({
+        fileName: 'tsconfig.json',
+        startFilePath: entry
+    })
+
+    // const compilerOptions = tsConfigPath ? JSON.parse(fs.readFileSync(tsConfigPath,'utf-8')).compilerOptions : {}
+    const tsConfig = tsConfigPathDir ?
+        JSON.parse(
+            fs.readFileSync(
+                path.join(tsConfigPathDir,'tsconfig.json'),
+                'utf-8'
+            ))
+        : {}
+    const {compilerOptions} = tsConfig
+    const {baseUrl = '.', paths = {}} = compilerOptions
+
+    const finalBaseUrl = path.join(
+        tsConfigPathDir,
+        baseUrl
+    )
+
+    return rollup({
         input: entry,
         plugins: [
             json(),
+            commonjs({
+                strictRequires: true
+            }),
             resolve({
                 extensions:['.js','.ts','.json']
             }),// 解析 node_modules 中的模块
-            transformTypescriptPlugin()
+            typescript({
+                compilerOptions:{
+                    target: "ES2021", //safe
+                    module: "ESNext",
+                    removeComments: false,
+                    skipLibCheck: true,
+                    jsx: "preserve",
+                    allowJs: true,
+                    paths: compilerOptions.paths,
+                    baseUrl: finalBaseUrl
+                },
+                include: `${tsConfigPathDir}/**/*.(cts|mts|ts|tsx|js|jsx|mjs|cjs)`,
+                exclude: [`${tsConfigPathDir}/node_modules/**`,`${tsConfigPathDir}/__bundle/**`]
+            }), // 之所以不用babel是因为 1. babel不能明确指定编译为某个JavaScript版本. 2. babel编译后的代码可读性不好
         ],
-        external: external(),
+        external: external()
 
     }).then((bundle)=>{
         return bundle.write({
@@ -101,5 +147,15 @@ const rollupBuild = ({entry,output,repoPath})=>{
     })
 }
 
+// const testEntry = 'D:\\pro\\js-code-view\\public\\recommend\\vue\\src\\core\\index.ts'
+// const testOp = "D:\\pro\\js-code-view\\public\\recommend\\vue\\__bundle\\src%2Fcore%2Findex.ts.js"
+
+const testEntry = 'D:\\pro\\js-code-view\\public\\recommend\\vue\\src\\compiler\\index.ts'
+const testOp = "D:\\pro\\js-code-view\\public\\recommend\\vue\\__bundle\\src%2Fcompiler%2Findex.ts.js"
+
+rollupBuild({
+    entry: testEntry,
+    output: testOp
+})
 
 module.exports = rollupBuild

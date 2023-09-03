@@ -107,6 +107,7 @@ export function genreateDotJson(ast,code){
         traverse(ast, {
             CallExpression(path) {
                 const {end: calleeEnd} = path.node.callee
+                console.log('callee',path.node.callee);
                 const query = {
                     type: "definition",
                     file: "example.js",
@@ -115,10 +116,13 @@ export function genreateDotJson(ast,code){
                 server.request({ query }, (err, data = {}) => {
                     if(Object.keys(data).length){
                         const {start,end} = data
+                        console.log(start,end);
                         let callVertex = funcDecVertexs.find(vertex=> vertex.loc.start === start && vertex.loc.end === end)
                         const parentFunc = path.getFunctionParent()
                         if(parentFunc){
                             const {start: parentFuncStart ,end: parentFuncEnd} = getParsedParentFuncLoc(path)
+                            console.log(parentFuncStart,parentFuncEnd);
+
                             if(parentFuncStart && parentFuncEnd){
                                 const parentFuncVertex = funcDecVertexs.find(vertex=> vertex.loc.start === parentFuncStart && vertex.loc.end === parentFuncEnd)
 

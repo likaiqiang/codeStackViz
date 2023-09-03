@@ -51,3 +51,9 @@ export const waitForPromise = async ({promise,timeout=1000,waitCallBack=()=>{}})
         throw err
     }
 }
+
+export const TASKSTATUS = {
+    INIT: 0,
+    REPOCLONEDONE: 1,
+    BUNDLED:2
+}

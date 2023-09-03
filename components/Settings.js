@@ -13,8 +13,9 @@ import {Autocomplete} from "@mui/material";
 import {useMemoizedFn} from "ahooks/lib";
 import {debounce} from 'lodash-es'
 import Modal from 'react-modal';
-import {getBundle} from "@/api";
+import {getBundle, getStatus, submitTask} from "@/api";
 import {waitForPromise} from "@/pages/utils";
+import {getConfigByCode} from "@/pages/cg";
 
 
 const TreeCustomItem = ({list = [],parentIndex = []})=>{
@@ -40,7 +41,7 @@ const TreeCustomItem = ({list = [],parentIndex = []})=>{
     )
 }
 
-export default (props)=>{
+export default ({onBundle=()=>{}})=>{
     const [treeData,setTreeData] = useState([])
     const [options,setOptions] = useState([])
     const [loading,setLoading] = useState(false)
@@ -100,6 +101,11 @@ export default (props)=>{
         }
 
     }
+    useEffect(()=>{
+        getStatus({}).then(res=>{
+            console.log('res',res)
+        })
+    },[])
 
     return (
         <SnackbarProvider maxSnack={3}>
@@ -179,17 +185,12 @@ export default (props)=>{
                                             disabled={confirmLoading}
                                             onClick={()=>{
                                                 setConfirmLoading(true)
-                                                waitForPromise({
-                                                    promise: getBundle({
-                                                        params: githubRef.current
-                                                    }),
-                                                    waitCallBack(){
-                                                        enqueueSnackbar('please wait')
-                                                    }
-                                                }).then(res=>{
-                                                    setConfirmLoading(false)
-                                                    console.log('res',res);
+                                                submitTask({
+                                                    params: githubRef.current
+                                                }).then(()=>{
+                                                    enqueueSnackbar('the submission is successful, please check it in the settings')
                                                 })
+
                                             }}
                                         >
                                             confirm

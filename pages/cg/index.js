@@ -46,19 +46,18 @@ export function filterJsonByEntry({dotJson,entryFuncId}) {
 
 }
 
-export const getConfigByCode = ({code, filename})=>{
+export const getConfigByCode = ({code})=>{
     const ast = getAst({code})
     const {dotJson,importedModules,funcDecVertexs,exportVertexs, ast: newAst} = getFuncVertexs({ast})
 
-    cache[filename] = {
-        ast:newAst,
+    return {
+        ast: newAst,
         dotJson,
         importedModules,
         funcDecVertexs,
         exportVertexs,
         code
     }
-    return cache[filename]
 
     // const filteredDotJson = filterJsonByEntry({
     //     dotJson,
@@ -118,9 +117,6 @@ export function generateDotStr({filteredDotJson,selectNodeId}){
         filteredDotJson
     }
 }
-
-export const cache = {}
-
 
 // 在JavaScript中，一个函数可以在全局被调用、可以在函数内部被调用，可以是成员函数（2种情况：普通对象与类实例化）、调用call/apply、constructor?
 // 全局调用，没有parent，忽略

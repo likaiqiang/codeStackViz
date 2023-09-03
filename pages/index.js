@@ -21,12 +21,12 @@ import {getBundle} from "@/api";
 
 const filename = 'babel-parser'
 
-const generateCache = ({owner,repo,key,name ='',subPath='', entryFuncId})=>{
+const generateCache = ({owner, repo, key, name = '', subPath = '', entryFuncId}) => {
     return `${key}@${encodeURIComponent(owner)}@${encodeURIComponent(repo)}` + (name ? `@${encodeURIComponent(name)}` : '') + (subPath ? `@${encodeURIComponent(subPath)}` : '') + `@${entryFuncId}`
 }
 
-const parseCacheStr = (str)=>{
-    const [owner,repo,name,subPath,entryFuncId] = str.split('@').map(s=> decodeURIComponent(s))
+const parseCacheStr = (str) => {
+    const [owner, repo, name, subPath, entryFuncId] = str.split('@').map(s => decodeURIComponent(s))
     return {
         owner,
         repo,
@@ -41,13 +41,13 @@ export default function Home() {
 
     const [code, setCode] = useState('')
 
-    const [cacheEntry,setCacheEntry] = useLocalStorage('entryFuncName','')
+    const [cacheEntry, setCacheEntry] = useLocalStorage('entryFuncName', '')
 
     const [history, setHistory] = useImmer({
         list: [],
         index: -1
     })
-    const [modal,setModal] = useImmer({
+    const [modal, setModal] = useImmer({
         isOpen: false,
         index: -1,
         list: []
@@ -78,9 +78,9 @@ export default function Home() {
         return id
     }
 
-    const explainCode = (code)=>{
+    const explainCode = (code) => {
         const {current: chat} = chatRef
-        if(code){
+        if (code) {
             chat.send(
                 "解释以下JavaScript代码: \n" +
                 "\`\`\`javascript \n" +
@@ -127,39 +127,41 @@ export default function Home() {
         setModal(draft => {
             draft.isOpen = true
         })
+
+        // getBundle({}).then(({bundle})=>{
+        //     const config = getConfigByCode({code:bundle})
+        //     configRef.current = config
+        //     const {exportVertexs} = config
+        //     renderPageSvg({
+        //         entryFuncId: exportVertexs[0].id
+        //     })
+        // })
     }, []);
 
     useEffect(() => {
-        hotkeys('esc',back)
+        hotkeys('esc', back)
     }, []);
 
-    const onSelectNodeCode = (id)=>{
+    const onSelectNodeCode = (id) => {
         const {current: config} = configRef
         const targetNode = config.nodes[id]
         const code = generateSplicedCode(targetNode)
         setCode(code)
     }
-    const onCloseModal = ()=>{
-        if(modal.index > -1) setModal(draft => {
-            draft.isOpen = false
-        })
-        else {
-            // keeping
-        }
-    }
 
-    const renderPageSvg = ({entryFuncId,renderMaxLevel = 3})=>{
+    const renderPageSvg = ({entryFuncId, renderMaxLevel = 3}) => {
         const {current: config} = configRef
+        console.log('config',config);
         let filteredDotJson = filterJsonByEntry({
             dotJson: config.dotJson,
             entryFuncId
         })
         filteredDotJson = {
             ...filteredDotJson,
-            statements: filteredDotJson.statements.filter(edge=>edge.level <= Math.min(renderMaxLevel, filteredDotJson.maxLevel))
+            statements: filteredDotJson.statements.filter(edge => edge.level <= Math.min(renderMaxLevel, filteredDotJson.maxLevel))
         }
 
-        const {dot,nodes} = generateDotStr({
+        const {dot, nodes} = generateDotStr({
             filteredDotJson
         })
 
@@ -170,8 +172,7 @@ export default function Home() {
             dot,
             nodes
         }
-
-        return renderSvg(dot).then(()=>Promise.resolve({dot,nodes}))
+        return renderSvg(dot).then(() => ({dot, nodes}))
     }
 
     const popperRef = useRef()
@@ -204,11 +205,11 @@ export default function Home() {
                     const id = node.getAttribute("id");
                     renderPageSvg({
                         entryFuncId: id
-                    }).then(()=>{
+                    }).then(() => {
                         push(id)
                     })
                 }}
-                onSettingClick={()=>{
+                onSettingClick={() => {
                     setModal(draft => {
                         draft.isOpen = true
                     })
@@ -224,7 +225,7 @@ export default function Home() {
                 isOpen={modal.isOpen}
                 ariaHideApp={false}
                 style={{
-                    content:{
+                    content: {
                         top: '50%',
                         left: '50%',
                         right: 'auto',
@@ -238,27 +239,50 @@ export default function Home() {
                     }
                 }}
                 shouldCloseOnOverlayClick={true}
-                onRequestClose={onCloseModal}
-            >
-                <Settings list={modal.list} activeIndex={modal.index} onItemClick={({id,index})=>{
-                    renderPageSvg({
-                        entryFuncId: id
-                    }).then(()=>{
-                        setModal(draft => {
-                            draft.index = index
-                            draft.isOpen = false
-                        })
-                        setHistory(draft => {
-                            draft.list = [id]
-                            draft.index = 0
-                        })
-                        setCacheEntry({
-                            ...cacheEntry,
-                            [filename]: id
-                        })
+                onRequestClose={()=>{
+                    setModal(draft => {
+                        draft.isOpen = false
                     })
                 }}
-            />
+            >
+                <Settings
+                    list={modal.list}
+                    activeIndex={modal.index}
+                    onItemClick={({id, index}) => {
+                        renderPageSvg({
+                            entryFuncId: id
+                        }).then(() => {
+                            setModal(draft => {
+                                draft.index = index
+                                draft.isOpen = false
+                            })
+                            setHistory(draft => {
+                                draft.list = [id]
+                                draft.index = 0
+                            })
+                            setCacheEntry({
+                                ...cacheEntry,
+                                [filename]: id
+                            })
+                        })
+                    }}
+                    onBundle={config=>{
+                        configRef.current = config
+                        const {exportVertexs} = config
+                        if(exportVertexs.length){
+                            renderPageSvg({
+                                entryFuncId: exportVertexs[0].id
+                            })
+                            setHistory(draft => {
+                                draft.list.push(exportVertexs[0].id)
+                                draft.index = draft.index + 1
+                            })
+                            setModal(draft => {
+                                draft.isOpen = false
+                            })
+                        }
+                    }}
+                />
             </Modal>
             {
                 ReactDOM.createPortal(
