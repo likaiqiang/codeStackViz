@@ -4,7 +4,7 @@ import TreeView from '@mui/lab/TreeView';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import TreeItem from '@mui/lab/TreeItem';
-import {useCallback, useEffect, useRef, useState} from "react";
+import {useCallback, useContext, useEffect, useRef, useState} from "react";
 import Whether,{If,Else} from "@/components/Whether";
 import {createDraft, finishDraft} from "immer"
 import CircularProgress from '@mui/material/CircularProgress';
@@ -14,8 +14,12 @@ import {useMemoizedFn} from "ahooks/lib";
 import {debounce} from 'lodash-es'
 import Modal from 'react-modal';
 import {getBundle, getStatus, submitTask} from "@/api";
-import {waitForPromise} from "@/pages/utils";
+import {} from 'react'
+import {renderMaxLevel as defaultRenderMaxLevel, waitForPromise} from "@/pages/utils";
 import {getConfigByCode} from "@/pages/cg";
+import SelectEntryModal from "@/components/SelectEntryModal";
+import ReactDOM from "react-dom";
+import PageContext from "@/context";
 
 
 const TreeCustomItem = ({list = [],parentIndex = []})=>{
@@ -102,6 +106,10 @@ export default (props)=>{
         }
 
     }
+    const selectEntryModalRef = useRef()
+    const [displayFunc,setDisplayFunc] = useState([])
+    const {getBatchConfigByCode} = useContext(PageContext)
+
     useEffect(()=>{
         getStatus({}).then(res=>{
             console.log('res',res)
@@ -147,7 +155,20 @@ export default (props)=>{
                                                         (bundled)=>{
                                                           return (
                                                               <dd onClick={()=>{
-                                                                  onItemClick(bundled.bundleFile)
+                                                                  const {displayFunc} = getBatchConfigByCode({code: bundled.bundleFile})
+
+                                                                  let filtedDisplayFunc = displayFunc.filter(([vertex,dotJson])=>{
+                                                                      return dotJson.maxLevel > defaultRenderMaxLevel
+                                                                  })
+                                                                  if(filtedDisplayFunc.length === 0){
+                                                                      filtedDisplayFunc = displayFunc.filter(([_,dotJson])=>{
+                                                                          return dotJson.statements.length > defaultRenderMaxLevel
+                                                                      })
+                                                                  }
+
+                                                                  selectEntryModalRef.current.show()
+                                                                  setDisplayFunc(filtedDisplayFunc)
+
                                                               }}>
                                                                   <a href="javascript:;">{bundled.bundleFileName}</a>
                                                               </dd>
@@ -238,6 +259,12 @@ export default (props)=>{
                     </Else>
                 </Whether>
             </div>
+            {
+                ReactDOM.createPortal(
+                    <SelectEntryModal ref={selectEntryModalRef} list={displayFunc}/>,
+                    document.body
+                )
+            }
         </SnackbarProvider>
     )
 }

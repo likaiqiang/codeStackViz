@@ -1,39 +1,54 @@
-import React, { useState } from 'react';
+import React, {useState, forwardRef, useImperativeHandle, useContext, useRef} from 'react';
 import Modal from 'react-modal';
 import { TextField, List, ListItem, ListItemText } from '@mui/material';
-
-const data = [
-    { title: '链接1', url: 'https://example.com/1' },
-    { title: '链接2', url: 'https://example.com/2' },
-    { title: '链接3', url: 'https://example.com/3' },
-    // ...
-];
+import PageContext from '@/context'
+import CustomModal, {modalManager} from "@/components/CustomModal";
 
 
-export default ()=>{
-    const [isOpen, setIsOpen] = useState(false);
+const SelectEntryModal = (props,ref)=>{
+    const {list = []} = props
     const [searchText, setSearchText] = useState('');
+    const {renderFiltedSvg} = useContext(PageContext)
+    const modalRef = useRef()
 
-    const filteredData = data.filter(item =>
-        item.title.toLowerCase().includes(searchText.toLowerCase())
-    );
-
+    useImperativeHandle(ref,()=>{
+        return {
+            show(){
+                modalRef.current.show()
+            },
+            hide(){
+                modalRef.current.hide()
+            }
+        }
+    })
     return (
-        <Modal isOpen={isOpen} onRequestClose={() => setIsOpen(false)}>
+        <CustomModal
+            ref={modalRef}
+            onRequestClose={() => modalRef.current.hide()}
+        >
             <TextField
-                label="搜索"
+                label="please select or search a entry function"
                 value={searchText}
                 onChange={e => setSearchText(e.target.value)}
+                style={{'width':'100%'}}
+
             />
             <div style={{ maxHeight: 200, overflow: 'auto' }}>
                 <List>
-                    {filteredData.map(item => (
-                        <ListItem key={item.url} button component="a" href={item.url}>
-                            <ListItemText primary={item.title} />
+                    {list.map(item => (
+                        <ListItem button={true} key={item[0].id} onClick={()=>{
+                            renderFiltedSvg({
+                                entryFuncId: item[0].id
+                            }).then(()=>{
+                                modalManager.closeAllModals()
+                            })
+                        }}>
+                            <ListItemText primary={item[0].name} />
                         </ListItem>
                     ))}
                 </List>
             </div>
-        </Modal>
+        </CustomModal>
     )
 }
+export default forwardRef(SelectEntryModal)

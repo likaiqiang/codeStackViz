@@ -8,22 +8,11 @@ export const selectNodeConfig = {
 
 export const getConfigByCode = ({code})=>{
     const ast = getAst({code})
-    const {
-        dotJson,
-        importedModules,
-        funcDecVertexs,
-        exportVertexs,
-        displayFunc,
-        ast: newAst
-    } = getFuncVertexs({ast})
 
+    const config = getFuncVertexs({ast})
     return {
-        ast: newAst,
-        dotJson,
-        importedModules,
-        funcDecVertexs,
-        exportVertexs,
-        displayFunc,
+        ...config,
+        ast: config.ast,
         code
     }
 }

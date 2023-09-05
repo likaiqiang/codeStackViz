@@ -1,5 +1,4 @@
 import {useEffect, useRef, useState} from "react";
-import ReactDOM from "react-dom";
 import {
     generateDotStr,
     getConfigByCode,
@@ -14,9 +13,12 @@ import Chat from "@/components/Chat";
 import hotkeys from 'hotkeys-js';
 import 'bootstrap-icons/font/bootstrap-icons.min.css'
 import Modal from 'react-modal';
-import {useLocalStorage} from "@/pages/utils";
+import {useLocalStorage,renderMaxLevel as defaultRenderMaxLevel} from "@/pages/utils";
 import Settings from "@/components/Settings";
 import {getBundle, getRecommentBundles} from "@/api";
+import ReactDOM from "react-dom";
+import PageContext from '@/context/index'
+import CustomModal from "@/components/CustomModal";
 
 const filename = 'babel-parser'
 
@@ -46,9 +48,9 @@ export default function Home() {
         list: [],
         index: -1
     })
-    const [modal, setModal] = useImmer({
-        isOpen: false,
-        list: []
+    const modalRef = useRef()
+    const [settings,setSetings] = useImmer({
+        list:[]
     })
     const graphvizRef = useRef()
     const push = (id) => {
@@ -128,10 +130,10 @@ export default function Home() {
         // }
 
         getRecommentBundles().then(res=>{
-            setModal(draft => {
+            setSetings(draft => {
                 draft.list = res.files
-                draft.isOpen = true
             })
+            modalRef.current.show()
         })
 
         // getBundle({}).then(({bundle})=>{
@@ -155,7 +157,7 @@ export default function Home() {
         setCode(code)
     }
 
-    const renderFiltedSvg = ({entryFuncId, renderMaxLevel = 3}) => {
+    const renderFiltedSvg = ({entryFuncId, renderMaxLevel = defaultRenderMaxLevel}) => {
         const {current: config} = configRef
         let filteredDotJson = filterJsonByEntry({
             dotJson: config.dotJson,
@@ -184,128 +186,110 @@ export default function Home() {
     const chatRef = useRef()
     return (
         <div className={'codeViewContainer'}>
-            <Graphviz
-                className={'codeSvg'}
-                popper={popperRef}
-                history={history}
-                ref={graphvizRef}
-                config={configRef.current}
-                onArrowClick={({type}) => {
-                    let id = ''
-                    if (type === 'back') {
-                        id = back()
-                    }
-                    if (type === 'forward') {
-                        id = forward()
-                    }
-                    renderFiltedSvg({
-                        entryFuncId: id
-                    })
-                }}
-                onNodeClick={(node) => {
-                    const id = node.getAttribute("id");
-                    onSelectNodeCode(id)
-                }}
-                onContextMenuItemClick={(node) => {
-                    const id = node.getAttribute("id");
-                    renderFiltedSvg({
-                        entryFuncId: id
-                    }).then(() => {
-                        push(id)
-                    })
-                }}
-                onSettingClick={() => {
-                    setModal(draft => {
-                        draft.isOpen = true
-                    })
-                }}
-            />
-            <div className={'codeView'}>
-                <CodeEditor value={code} onExplainClick={explainCode}/>
-                <div className={'codeExplainText'}>
-                    <Chat ref={chatRef}/>
-                </div>
-            </div>
-            <Modal
-                isOpen={modal.isOpen}
-                ariaHideApp={false}
-                style={{
-                    content: {
-                        top: '50%',
-                        left: '50%',
-                        right: 'auto',
-                        bottom: 'auto',
-                        marginRight: '-50%',
-                        transform: 'translate(-50%, -50%)',
-                        width: "30%"
-                    },
-                    overlay: {
-                        backgroundColor: 'rgba(0,0,0,.4)'
-                    }
-                }}
-                shouldCloseOnOverlayClick={true}
-                onRequestClose={()=>{
-                    setModal(draft => {
-                        draft.isOpen = false
-                    })
-                }}
-            >
-                <Settings
-                    list={modal.list}
-                    onItemClick={(bundleFile) => {
-
-                        const {displayFunc = []} = getBatchConfigByCode({code: bundleFile})
-                        let filtedDisplayFunc = displayFunc.filter(([vertex,dotJson])=>{
-                            return dotJson.maxLevel > 3
+            <PageContext.Provider value={{
+                renderFiltedSvg,
+                getBatchConfigByCode
+            }}>
+                <Graphviz
+                    className={'codeSvg'}
+                    popper={popperRef}
+                    history={history}
+                    ref={graphvizRef}
+                    config={configRef.current}
+                    onArrowClick={({type}) => {
+                        let id = ''
+                        if (type === 'back') {
+                            id = back()
+                        }
+                        if (type === 'forward') {
+                            id = forward()
+                        }
+                        renderFiltedSvg({
+                            entryFuncId: id
                         })
-                        if(filtedDisplayFunc.length === 0){
-                            filtedDisplayFunc = displayFunc.filter(([_,dotJson])=>{
-                                return dotJson.statements.length > 3
-                            })
-                        }
-
-                        console.log('filtedDisplayFunc',filtedDisplayFunc);
-                        // renderFiltedSvg({
-                        //     entryFuncId: id
-                        // }).then(() => {
-                        //     setModal(draft => {
-                        //         draft.index = index
-                        //         draft.isOpen = false
-                        //     })
-                        //     setHistory(draft => {
-                        //         draft.list = [id]
-                        //         draft.index = 0
-                        //     })
-                        //     setCacheEntry({
-                        //         ...cacheEntry,
-                        //         [filename]: id
-                        //     })
-                        // })
                     }}
-                    onBundle={config=>{
-                        configRef.current = config
-                        const {exportVertexs} = config
-                        if(exportVertexs.length){
-                            renderFiltedSvg({
-                                entryFuncId: exportVertexs[0].id
-                            })
-                            setHistory(draft => {
-                                draft.list.push(exportVertexs[0].id)
-                                draft.index = draft.index + 1
-                            })
-                            setModal(draft => {
-                                draft.isOpen = false
-                            })
-                        }
+                    onNodeClick={(node) => {
+                        const id = node.getAttribute("id");
+                        onSelectNodeCode(id)
+                    }}
+                    onContextMenuItemClick={(node) => {
+                        const id = node.getAttribute("id");
+                        renderFiltedSvg({
+                            entryFuncId: id
+                        }).then(() => {
+                            push(id)
+                        })
+                    }}
+                    onSettingClick={() => {
+                        modalRef.current.show()
                     }}
                 />
-            </Modal>
-            {
-                ReactDOM.createPortal(
-                    <CustomPopper ref={popperRef}/>,
-                    document.body
-                )
-            }
+                <div className={'codeView'}>
+                    <CodeEditor value={code} onExplainClick={explainCode}/>
+                    <div className={'codeExplainText'}>
+                        <Chat ref={chatRef}/>
+                    </div>
+                </div>
+                {
+                    ReactDOM.createPortal(
+                        <CustomModal
+                            ref={modalRef}
+                            onRequestClose={()=>{
+                                modalRef.current.hide()
+                            }}
+
+                        >
+                            <Settings
+                                list={settings.list}
+                                onItemClick={(bundleFile) => {
+
+                                    // const {displayFunc = []} = getBatchConfigByCode({code: bundleFile})
+
+                                    // renderFiltedSvg({
+                                    //     entryFuncId: id
+                                    // }).then(() => {
+                                    //     setModal(draft => {
+                                    //         draft.index = index
+                                    //         draft.isOpen = false
+                                    //     })
+                                    //     setHistory(draft => {
+                                    //         draft.list = [id]
+                                    //         draft.index = 0
+                                    //     })
+                                    //     setCacheEntry({
+                                    //         ...cacheEntry,
+                                    //         [filename]: id
+                                    //     })
+                                    // })
+                                }}
+                                onBundle={config=>{
+                                    configRef.current = config
+                                    const {exportVertexs} = config
+                                    if(exportVertexs.length){
+                                        renderFiltedSvg({
+                                            entryFuncId: exportVertexs[0].id
+                                        })
+                                        setHistory(draft => {
+                                            draft.list.push(exportVertexs[0].id)
+                                            draft.index = draft.index + 1
+                                        })
+                                        setModal(draft => {
+                                            draft.isOpen = false
+                                        })
+                                    }
+                                }}
+                            />
+                        </CustomModal>,
+                        document.body
+                    )
+                }
+                {
+                    ReactDOM.createPortal(
+                        <CustomPopper ref={popperRef}/>,
+                        document.body
+                    )
+                }
+            </PageContext.Provider>
         </div>
     )
 }
