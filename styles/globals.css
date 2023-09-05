@@ -260,3 +260,17 @@ g.node{
   display: flex;
   justify-content: flex-end;
 }
+
+dl {
+  padding: 0;
+  margin: 0;
+}
+
+dt {
+  font-weight: 600;
+  margin-top: 1em;
+}
+
+dd {
+  margin-left: 2em;
+}

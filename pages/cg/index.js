@@ -6,49 +6,16 @@ export const selectNodeConfig = {
     color:'red'
 }
 
-export function filterJsonByEntry({dotJson,entryFuncId}) {
-    const {statements: nodes} = dotJson
-    const relatedNodes = new Map(); // 用 Map 来存储相关节点
-    let maxLevel = 0
-    function findRelatedNodes(entry,level) {
-        nodes.forEach(node => {
-            const key = node.head.id + '-' + node.tail.id
-
-            if (node.head.id === entry){
-                if(!relatedNodes.has(key)){
-                    node.level = level
-                    node.count = 1
-                    relatedNodes.set(key,node);
-                    maxLevel = Math.max(level,maxLevel)
-                    findRelatedNodes(node.tail.id,level + 1); // 递归查找下一级相关节点
-                } else {
-                    const existedNode = relatedNodes.get(key)
-                    if(existedNode.head.id === existedNode.tail.id){
-                        existedNode.self = true
-                    }
-                    else{
-                        existedNode.count = existedNode.count + 1
-                    }
-                }
-            }
-        });
-    }
-    findRelatedNodes(entryFuncId,0);
-
-    return {
-        ...dotJson,
-        maxLevel,
-        statements: nodes.filter(node => {
-            const key = node.head.id + '-' + node.tail.id
-            return relatedNodes.has(key)
-        })
-    }
-
-}
-
 export const getConfigByCode = ({code})=>{
     const ast = getAst({code})
-    const {dotJson,importedModules,funcDecVertexs,exportVertexs, ast: newAst} = getFuncVertexs({ast})
+    const {
+        dotJson,
+        importedModules,
+        funcDecVertexs,
+        exportVertexs,
+        displayFunc,
+        ast: newAst
+    } = getFuncVertexs({ast})
 
     return {
         ast: newAst,
@@ -56,18 +23,9 @@ export const getConfigByCode = ({code})=>{
         importedModules,
         funcDecVertexs,
         exportVertexs,
+        displayFunc,
         code
     }
-
-    // const filteredDotJson = filterJsonByEntry({
-    //     dotJson,
-    //     entryFuncId: entryFuncVertex.id
-    // })
-    //
-    // return generateDotStr({
-    //     filteredDotJson,
-    //     selectNodeId: entryFuncVertex.id,
-    // })
 }
 
 

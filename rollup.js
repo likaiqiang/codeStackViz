@@ -66,9 +66,11 @@ const minimatch = require('minimatch')
 //     });
 // }
 
-function findFileUpwards({fileName = 'tsconfig.json',startFilePath}) {
+function findFileUpwards({fileName = 'tsconfig.json',startFilePath, rootDir}) {
     let currentDir = path.dirname(startFilePath)
-    while (currentDir !== path.parse(currentDir).root) {
+    rootDir = rootDir ? path.join(rootDir,'..') : path.parse(currentDir).root
+
+    while (currentDir !== rootDir) {
         const packageJsonPath = path.join(currentDir, fileName);
         if (fs.existsSync(packageJsonPath)) {
             return currentDir
@@ -87,11 +89,12 @@ function getmatchedAlias(path,aliases){
 }
 
 
-const rollupBuild = ({entry,output})=>{
+const rollupBuild = ({entry,output,repoPath})=>{
 
     const tsConfigPathDir = findFileUpwards({
         fileName: 'tsconfig.json',
-        startFilePath: entry
+        startFilePath: entry,
+        rootDir: repoPath
     })
 
     // const compilerOptions = tsConfigPath ? JSON.parse(fs.readFileSync(tsConfigPath,'utf-8')).compilerOptions : {}
@@ -147,15 +150,21 @@ const rollupBuild = ({entry,output})=>{
     })
 }
 
-// const testEntry = 'D:\\pro\\js-code-view\\public\\recommend\\vue\\src\\core\\index.ts'
-// const testOp = "D:\\pro\\js-code-view\\public\\recommend\\vue\\__bundle\\src%2Fcore%2Findex.ts.js"
+// const testEntry = 'D:\\pro\\js-code-view\\public\\recommend\\vuejs@vue\\src\\core\\index.ts'
+// const testOp = "D:\\pro\\js-code-view\\public\\recommend\\vuejs@vue\\__bundle\\src%2Fcore%2Findex.ts.js"
 
-const testEntry = 'D:\\pro\\js-code-view\\public\\recommend\\vue\\src\\compiler\\index.ts'
-const testOp = "D:\\pro\\js-code-view\\public\\recommend\\vue\\__bundle\\src%2Fcompiler%2Findex.ts.js"
+// const testEntry = 'D:\\pro\\js-code-view\\public\\recommend\\vuejs@vue\\src\\compiler\\index.ts'
+// const testOp = "D:\\pro\\js-code-view\\public\\recommend\\vuejs@vue\\__bundle\\src%2Fcompiler%2Findex.ts.js"
+// const repoPath = "D:\\pro\\js-code-view\\public\\recommend\\vuejs@vue"
+
+const testEntry = 'D:\\pro\\js-code-view\\public\\recommend\\axios@axios\\lib\\axios.js'
+const testOp = "D:\\pro\\js-code-view\\public\\recommend\\axios@axios\\__bundle\\lib%2Faxios.js.js"
+const repoPath = "D:\\pro\\js-code-view\\public\\recommend\\axios@axios"
 
 rollupBuild({
     entry: testEntry,
-    output: testOp
+    output: testOp,
+    repoPath
 })
 
 module.exports = rollupBuild

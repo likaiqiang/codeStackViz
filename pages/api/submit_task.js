@@ -4,21 +4,11 @@ import Git from 'nodegit'
 import rollup from "@/rollup";
 import {rimraf} from 'rimraf'
 import {MongoClient} from 'mongodb'
-import {TASKSTATUS} from "@/pages/utils";
+import {TASKSTATUS,checkPathExists} from "@/pages/server_utils";
 
 
 const expireConfig = {
     timestamp: 20000
-}
-
-
-async function checkFileExists(path) {
-    try {
-        await fs.access(path, fs.constants.F_OK);
-        return true;
-    } catch (err) {
-        return false;
-    }
 }
 
 const delay = (timer=1000)=>{
@@ -80,7 +70,7 @@ export class Cache {
             name,
             key
         })
-        return checkFileExists(repoPath)
+        return checkPathExists(repoPath)
     }
     hasBundle({owner,repo,key,name ='',subPath = ''}){
         const repoPath = Cache.getRepoPath({
@@ -89,7 +79,7 @@ export class Cache {
             name,
             key
         })
-        return checkFileExists(
+        return checkPathExists(
             path.join(repoPath,`./__bundle/${encodeURIComponent(subPath)}.js`)
         )
     }
@@ -170,7 +160,7 @@ export class Cache {
                 }
                 else{
                     const bundlePath = path.join(fullPath,'__bundle')
-                    if( await checkFileExists(bundlePath)){
+                    if( await checkPathExists(bundlePath)){
                         const bundleFiles = await fs.readdir(bundlePath)
                         for(let bundle of bundleFiles){
                             const bundleFullPath = path.join(fullPath,'__bundle',bundle)

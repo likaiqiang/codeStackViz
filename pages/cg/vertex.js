@@ -1,7 +1,7 @@
 import * as t from "@babel/types";
 import tern from "tern";
 import {parse} from "@babel/parser";
-import {generateNameByPath, getAst} from "@/pages/cg/common";
+import {filterJsonByEntry, generateNameByPath, getAst} from "@/pages/cg/common";
 const generate = require('@babel/generator').default
 
 const {default: traverse} = require("@babel/traverse");
@@ -21,6 +21,8 @@ export function collecVertexsByAst(ast){
                     start,
                     end
                 },
+                isGlobal: true,
+                exported:false,
                 name: generateNameByPath(path),
                 path
             })
@@ -36,6 +38,8 @@ export function collecVertexsByAst(ast){
                         start,
                         end
                     },
+                    isGlobal: true,
+                    exported:false,
                     name: generateNameByPath(path),
                     path
                 })
@@ -52,6 +56,7 @@ export function collecVertexsByAst(ast){
                         start,
                         end
                     },
+                    exported:false,
                     name: generateNameByPath(path),
                     path
                 })
@@ -68,6 +73,7 @@ export function collecVertexsByAst(ast){
                         start,
                         end
                     },
+                    exported:false,
                     name: generateNameByPath(path),
                     path
                 })
@@ -83,9 +89,26 @@ export function collecVertexsByAst(ast){
                     start,
                     end
                 },
+                exported:false,
                 name: generateNameByPath(path),
                 path
             })
+        },
+        ReturnStatement(path){
+            const {argument} = path.node
+            if(argument && (argument.type === 'FunctionExpression' || argument.type === 'ArrowFunctionExpression')){
+                const {start, end,id} = argument
+                vertexs.push({
+                    id: `${id?.name || 'anonymous'}-${start}-${end}`,
+                    loc:{
+                        start,
+                        end
+                    },
+                    exported:false,
+                    name: generateNameByPath(path),
+                    path
+                })
+            }
         }
     })
     return vertexs
@@ -107,7 +130,6 @@ export function genreateDotJson(ast,code){
         traverse(ast, {
             CallExpression(path) {
                 const {end: calleeEnd} = path.node.callee
-                console.log('callee',path.node.callee);
                 const query = {
                     type: "definition",
                     file: "example.js",
@@ -116,12 +138,10 @@ export function genreateDotJson(ast,code){
                 server.request({ query }, (err, data = {}) => {
                     if(Object.keys(data).length){
                         const {start,end} = data
-                        console.log(start,end);
                         let callVertex = funcDecVertexs.find(vertex=> vertex.loc.start === start && vertex.loc.end === end)
                         const parentFunc = path.getFunctionParent()
                         if(parentFunc){
                             const {start: parentFuncStart ,end: parentFuncEnd} = getParsedParentFuncLoc(path)
-                            console.log(parentFuncStart,parentFuncEnd);
 
                             if(parentFuncStart && parentFuncEnd){
                                 const parentFuncVertex = funcDecVertexs.find(vertex=> vertex.loc.start === parentFuncStart && vertex.loc.end === parentFuncEnd)
@@ -213,6 +233,8 @@ export function getFuncVertexs({ast}){
     const server = new tern.Server({})
     server.addFile("entry.js", code);
 
+    window.code = code
+
     traverse(newAst,{
         FunctionDeclaration(path){
             if(path.node.id.name === 'jsCodeViewEntryFunc'){
@@ -227,7 +249,7 @@ export function getFuncVertexs({ast}){
                                 }
                             },(err,data={})=>{
                                 const vertex = funcDecVertexs.find(node=> node.loc.start === data.start && node.loc.end === data.end)
-                                if(vertex && vertex.name !== 'jsCodeViewEntryFunc') exportVertexs.push(vertex)
+                                if(vertex && vertex.name !== 'jsCodeViewEntryFunc') vertex.exported = true
                             })
                         }
                     })
@@ -242,12 +264,21 @@ export function getFuncVertexs({ast}){
             }
         }
     })
+    const displayFunc = funcDecVertexs.map(vertex=>{
+        const filtedDotJson = filterJsonByEntry({
+            dotJson,
+            entryFuncId: vertex.id
+        })
+        return [vertex,filtedDotJson]
+    }).filter(([vertex])=>{
+        return vertex.isGlobal
+    })
     return {
-        exportVertexs,
         dotJson,
         importedModules,
         funcDecVertexs,
-        ast: newAst
+        ast: newAst,
+        displayFunc
     }
 }
 
@@ -313,7 +344,7 @@ export const isFuncImported = (path,importedModules={})=>{
         }
 
         if (object.type === 'Identifier' && importedModules[object?.node?.name || object.name]) {
-            return importedModules[object.node.name]
+            return importedModules[object.node?.name || object.name]
         }
     }
     return false

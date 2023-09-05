@@ -33,6 +33,24 @@ export const generateNameByPath = (path)=>{
             return classPath.node.id.name + '.' + key.name
         }
     }
+    if(path.type === 'ReturnStatement'){
+        const {argument} = path.node
+        const {id} = argument
+
+        const parentPath = path.findParent(path=> path.isFunctionDeclaration() || path.isArrowFunctionExpression() || path.isFunctionExpression())
+
+        if(parentPath.type === 'FunctionDeclaration'){
+            return (parentPath.id?.name || 'anonymous') + 'return' + (id?.name || 'anonymous')
+        }
+        if(parentPath.type === 'ArrowFunctionExpression' || parentPath.type === 'FunctionExpression'){
+            const bindings = parentPath.scope.bindings;
+            for (const [name, binding] of Object.entries(bindings)) {
+                if (binding.path === parentPath.parentPath) {
+                    return name + 'return' + (id?.name || 'anonymous')
+                }
+            }
+        }
+    }
     return ''
 }
 
@@ -55,3 +73,44 @@ export const generateSplicedCode = ({path,npm,npmPath})=>{
     }
     return code + generateCode(path)
 }
+
+export function filterJsonByEntry({dotJson,entryFuncId}) {
+    const {statements: nodes} = dotJson
+    const relatedNodes = new Map(); // 用 Map 来存储相关节点
+    let maxLevel = 0
+    function findRelatedNodes(entry,level) {
+        nodes.forEach(node => {
+            const key = node.head.id + '-' + node.tail.id
+
+            if (node.head.id === entry){
+                if(!relatedNodes.has(key)){
+                    node.level = level
+                    node.count = 1
+                    relatedNodes.set(key,node);
+                    maxLevel = Math.max(level,maxLevel)
+                    findRelatedNodes(node.tail.id,level + 1); // 递归查找下一级相关节点
+                } else {
+                    const existedNode = relatedNodes.get(key)
+                    if(existedNode.head.id === existedNode.tail.id){
+                        existedNode.self = true
+                    }
+                    else{
+                        existedNode.count = existedNode.count + 1
+                    }
+                }
+            }
+        });
+    }
+    findRelatedNodes(entryFuncId,0);
+
+    return {
+        ...dotJson,
+        maxLevel,
+        statements: nodes.filter(node => {
+            const key = node.head.id + '-' + node.tail.id
+            return relatedNodes.has(key)
+        })
+    }
+
+}
+

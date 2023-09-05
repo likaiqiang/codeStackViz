@@ -36,3 +36,6 @@ export const getStatus = async ({headers={},signal})=>{
         signal
     }).then(res=>res.json())
 }
+export const getRecommentBundles = async ()=>{
+    return fetch('/api/get_recommend_repo').then(res=>res.json())
+}

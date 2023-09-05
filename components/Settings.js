@@ -41,7 +41,8 @@ const TreeCustomItem = ({list = [],parentIndex = []})=>{
     )
 }
 
-export default ({onBundle=()=>{}})=>{
+export default (props)=>{
+    const {list, onItemClick=()=>{}} = props
     const [treeData,setTreeData] = useState([])
     const [options,setOptions] = useState([])
     const [loading,setLoading] = useState(false)
@@ -132,78 +133,110 @@ export default ({onBundle=()=>{}})=>{
                         renderInput={(params) => <TextField {...params} label="please input a github repo keyword" />}
                     />
                 </div>
-                <div className={'libFiles'}>
-                    {/*defaultSelected*/}
-                    <Whether value={!loading}>
-                        <If>
-                            <Whether value={treeData.length}>
-                                <div>
-                                    <TreeView
-                                        aria-label="file system navigator"
-                                        defaultCollapseIcon={<ExpandMoreIcon />}
-                                        defaultExpandIcon={<ChevronRightIcon />}
-                                        sx={{ height: 240, flexGrow: 1, maxWidth: 400, overflowY: 'auto' }}
-                                        onNodeToggle={(event, nodeIds)=>{
-                                            const {nodeData,nodeDataSet,draft} = getNodeDataByEvent(event)
-                                            const isNodeExpand = nodeIds.includes(nodeDataSet.url)
-
-                                            if(isNodeExpand && (!nodeData.children || nodeData.children.length === 0)){
-                                                fetchGHContent({
-                                                    ...githubRef.current,
-                                                    subPath: nodeData.path
-                                                }).then(res=>{
-                                                    nodeData.children = res
-                                                    setTreeData(
-                                                        finishDraft(draft)
-                                                    )
-                                                })
-                                            }
-
-                                        }}
-                                        onNodeSelect={(event)=>{
-                                            const {nodeData} = getNodeDataByEvent(event)
-                                            if(nodeData.type ==='file'){
-                                                const filePath = nodeData.path
-                                                if(filePath.endsWith('.js') || filePath.endsWith('.ts')){
-                                                    githubRef.current = {
-                                                        ...githubRef.current,
-                                                        subPath:filePath
+                <Whether value={!treeData.length}>
+                    <If>
+                        <dl>
+                            <DataFor list={list}>
+                                {
+                                    (item)=>{
+                                        return (
+                                            <>
+                                                <dt>{`${item[0].owner}/${item[0].repo}`}</dt>
+                                                <DataFor list={item[1]}>
+                                                    {
+                                                        (bundled)=>{
+                                                          return (
+                                                              <dd onClick={()=>{
+                                                                  onItemClick(bundled.bundleFile)
+                                                              }}>
+                                                                  <a href="javascript:;">{bundled.bundleFileName}</a>
+                                                              </dd>
+                                                          )
+                                                        }
                                                     }
-                                                }
-                                                else {
-                                                    enqueueSnackbar('invalid javascript file')
-                                                }
-                                            }
-                                        }}
-                                    >
-                                        <TreeCustomItem list={treeData}/>
-                                    </TreeView>
-                                    <div className="confirmBtn">
-                                        <Button
-                                            variant="contained"
-                                            color="success"
-                                            disabled={confirmLoading}
-                                            onClick={()=>{
-                                                setConfirmLoading(true)
-                                                submitTask({
-                                                    params: githubRef.current
-                                                }).then(()=>{
-                                                    enqueueSnackbar('the submission is successful, please check it in the settings')
-                                                })
+                                                </DataFor>
+                                            </>
+                                        )
+                                    }
+                                }
+                            </DataFor>
+                        </dl>
+                    </If>
+                    <Else>
+                        <div className={'libFiles'}>
+                            {/*defaultSelected*/}
+                            <Whether value={!loading}>
+                                <If>
+                                    <Whether value={treeData.length}>
+                                        <div>
+                                            <TreeView
+                                                aria-label="file system navigator"
+                                                defaultCollapseIcon={<ExpandMoreIcon />}
+                                                defaultExpandIcon={<ChevronRightIcon />}
+                                                sx={{ height: 240, flexGrow: 1, maxWidth: 400, overflowY: 'auto' }}
+                                                onNodeToggle={(event, nodeIds)=>{
+                                                    const {nodeData,nodeDataSet,draft} = getNodeDataByEvent(event)
+                                                    const isNodeExpand = nodeIds.includes(nodeDataSet.url)
 
-                                            }}
-                                        >
-                                            confirm
-                                        </Button>
-                                    </div>
-                                </div>
+                                                    if(isNodeExpand && (!nodeData.children || nodeData.children.length === 0)){
+                                                        fetchGHContent({
+                                                            ...githubRef.current,
+                                                            subPath: nodeData.path
+                                                        }).then(res=>{
+                                                            nodeData.children = res
+                                                            setTreeData(
+                                                                finishDraft(draft)
+                                                            )
+                                                        })
+                                                    }
+
+                                                }}
+                                                onNodeSelect={(event)=>{
+                                                    const {nodeData} = getNodeDataByEvent(event)
+                                                    if(nodeData.type ==='file'){
+                                                        const filePath = nodeData.path
+                                                        if(filePath.endsWith('.js') || filePath.endsWith('.ts')){
+                                                            githubRef.current = {
+                                                                ...githubRef.current,
+                                                                subPath:filePath
+                                                            }
+                                                        }
+                                                        else {
+                                                            enqueueSnackbar('invalid javascript file')
+                                                        }
+                                                    }
+                                                }}
+                                            >
+                                                <TreeCustomItem list={treeData}/>
+                                            </TreeView>
+                                            <div className="confirmBtn">
+                                                <Button
+                                                    variant="contained"
+                                                    color="success"
+                                                    disabled={confirmLoading}
+                                                    onClick={()=>{
+                                                        setConfirmLoading(true)
+                                                        submitTask({
+                                                            params: githubRef.current
+                                                        }).then(()=>{
+                                                            enqueueSnackbar('the submission is successful, please check it in the settings')
+                                                        })
+
+                                                    }}
+                                                >
+                                                    confirm
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </Whether>
+                                </If>
+                                <Else>
+                                    <CircularProgress/>
+                                </Else>
                             </Whether>
-                        </If>
-                        <Else>
-                            <CircularProgress/>
-                        </Else>
-                    </Whether>
-                </div>
+                        </div>
+                    </Else>
+                </Whether>
             </div>
         </SnackbarProvider>
     )

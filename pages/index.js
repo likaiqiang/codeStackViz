@@ -1,11 +1,10 @@
 import {useEffect, useRef, useState} from "react";
 import ReactDOM from "react-dom";
 import {
-    filterJsonByEntry,
     generateDotStr,
     getConfigByCode,
 } from "@/pages/cg";
-import {generateSplicedCode} from './cg/common'
+import {filterJsonByEntry, generateSplicedCode} from './cg/common'
 import Graphviz from "@/components/Graphviz";
 import CodeEditor from '@/components/Editor'
 import CustomPopper from "@/components/Popper";
@@ -17,7 +16,7 @@ import 'bootstrap-icons/font/bootstrap-icons.min.css'
 import Modal from 'react-modal';
 import {useLocalStorage} from "@/pages/utils";
 import Settings from "@/components/Settings";
-import {getBundle} from "@/api";
+import {getBundle, getRecommentBundles} from "@/api";
 
 const filename = 'babel-parser'
 
@@ -49,7 +48,6 @@ export default function Home() {
     })
     const [modal, setModal] = useImmer({
         isOpen: false,
-        index: -1,
         list: []
     })
     const graphvizRef = useRef()
@@ -92,6 +90,10 @@ export default function Home() {
 
     const configRef = useRef()
 
+    const getBatchConfigByCode = ({code})=>{
+        return configRef.current = getConfigByCode({code})
+    }
+
     useEffect(() => {
         // let promise = null
         // const controller = new AbortController()
@@ -105,7 +107,7 @@ export default function Home() {
         //         configRef.current = config
         //         const {exportVertexs} = config
         //
-        //         renderPageSvg({
+        //         renderFiltedSvg({
         //             entryFuncId: repoConfig.entryFuncId
         //         })
         //         setHistory(draft => {
@@ -124,15 +126,19 @@ export default function Home() {
         //     controller.abort()
         //     promise = null
         // }
-        setModal(draft => {
-            draft.isOpen = true
+
+        getRecommentBundles().then(res=>{
+            setModal(draft => {
+                draft.list = res.files
+                draft.isOpen = true
+            })
         })
 
         // getBundle({}).then(({bundle})=>{
         //     const config = getConfigByCode({code:bundle})
         //     configRef.current = config
         //     const {exportVertexs} = config
-        //     renderPageSvg({
+        //     renderFiltedSvg({
         //         entryFuncId: exportVertexs[0].id
         //     })
         // })
@@ -149,9 +155,8 @@ export default function Home() {
         setCode(code)
     }
 
-    const renderPageSvg = ({entryFuncId, renderMaxLevel = 3}) => {
+    const renderFiltedSvg = ({entryFuncId, renderMaxLevel = 3}) => {
         const {current: config} = configRef
-        console.log('config',config);
         let filteredDotJson = filterJsonByEntry({
             dotJson: config.dotJson,
             entryFuncId
@@ -193,7 +198,7 @@ export default function Home() {
                     if (type === 'forward') {
                         id = forward()
                     }
-                    renderPageSvg({
+                    renderFiltedSvg({
                         entryFuncId: id
                     })
                 }}
@@ -203,7 +208,7 @@ export default function Home() {
                 }}
                 onContextMenuItemClick={(node) => {
                     const id = node.getAttribute("id");
-                    renderPageSvg({
+                    renderFiltedSvg({
                         entryFuncId: id
                     }).then(() => {
                         push(id)
@@ -247,30 +252,41 @@ export default function Home() {
             >
                 <Settings
                     list={modal.list}
-                    activeIndex={modal.index}
-                    onItemClick={({id, index}) => {
-                        renderPageSvg({
-                            entryFuncId: id
-                        }).then(() => {
-                            setModal(draft => {
-                                draft.index = index
-                                draft.isOpen = false
-                            })
-                            setHistory(draft => {
-                                draft.list = [id]
-                                draft.index = 0
-                            })
-                            setCacheEntry({
-                                ...cacheEntry,
-                                [filename]: id
-                            })
+                    onItemClick={(bundleFile) => {
+
+                        const {displayFunc = []} = getBatchConfigByCode({code: bundleFile})
+                        let filtedDisplayFunc = displayFunc.filter(([vertex,dotJson])=>{
+                            return dotJson.maxLevel > 3
                         })
+                        if(filtedDisplayFunc.length === 0){
+                            filtedDisplayFunc = displayFunc.filter(([_,dotJson])=>{
+                                return dotJson.statements.length > 3
+                            })
+                        }
+
+                        console.log('filtedDisplayFunc',filtedDisplayFunc);
+                        // renderFiltedSvg({
+                        //     entryFuncId: id
+                        // }).then(() => {
+                        //     setModal(draft => {
+                        //         draft.index = index
+                        //         draft.isOpen = false
+                        //     })
+                        //     setHistory(draft => {
+                        //         draft.list = [id]
+                        //         draft.index = 0
+                        //     })
+                        //     setCacheEntry({
+                        //         ...cacheEntry,
+                        //         [filename]: id
+                        //     })
+                        // })
                     }}
                     onBundle={config=>{
                         configRef.current = config
                         const {exportVertexs} = config
                         if(exportVertexs.length){
-                            renderPageSvg({
+                            renderFiltedSvg({
                                 entryFuncId: exportVertexs[0].id
                             })
                             setHistory(draft => {
