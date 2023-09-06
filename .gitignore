@@ -45,3 +45,4 @@ yarn.lock
 
 /public/resources/
 /public/recommend/
+/.rollup.cache/

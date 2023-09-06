@@ -3,7 +3,7 @@ import fs from 'fs/promises'
 import Git from 'nodegit'
 import rollup from "@/rollup";
 import {rimraf} from 'rimraf'
-import {TASKSTATUS,checkPathExists} from "@/pages/server_utils";
+import {TASKSTATUS, checkPathExists, resourcesFolderPath, getRepoPath} from "@/pages/server_utils";
 import router from '@/database.mjs'
 
 
@@ -23,34 +23,39 @@ const delay = (timer=1000)=>{
 
 export class BundleManager {
     usersCollection
-    static resourcesFolderPath = path.join(process.cwd(),'public/resources')
-    static getRepoPath({owner,repo,key,name =''}){
-        return path.join(BundleManager.resourcesFolderPath,`${key}@${encodeURIComponent(owner)}@${encodeURIComponent(repo)}` + (name ? `@${encodeURIComponent(name)}` : ''))
-    }
     constructor(usersCollection) {
         this.usersCollection = usersCollection
-        const checkExpired = ()=>{
-            this.deleteExpiredResource().then(async ()=>{
+        // const checkExpired = ()=>{
+        //     this.deleteExpiredResource().then(async ()=>{
+        //         await delay()
+        //         checkExpired()
+        //     })
+        // }
+        const checkInterruptedTask = ()=>{
+            this.checkTask().then(async ()=>{
                 await delay()
-                checkExpired()
+                checkInterruptedTask()
             })
         }
+        // checkInterruptedTask()
         // checkExpired()
-        this.checkTask()
+        // this.checkTask()
     }
     async checkTask(){
         const interruptedTask = await (this.usersCollection.find({status: { $ne: TASKSTATUS.BUNDLED }})).toArray()
         for(let task of interruptedTask){
             if(task.status === TASKSTATUS.INIT){
-                this.cloneRepo(task)
+                await this.cloneRepo(task).then(()=>{
+                    return this.generateBundle(task)
+                })
             }
             if(task.status === TASKSTATUS.REPOCLONEDONE){
-                this.generateBundle(task)
+                await this.generateBundle(task)
             }
         }
     }
     async cloneRepo({owner,repo,key,name ='',subPath=''}){
-        const repoPath = BundleManager.getRepoPath({
+        const repoPath = getRepoPath({
             owner,
             repo,
             name,
@@ -75,7 +80,7 @@ export class BundleManager {
         })
     }
     hasRepo({owner,repo,key,name =''}){
-        const repoPath = BundleManager.getRepoPath({
+        const repoPath = getRepoPath({
             owner,
             repo,
             name,
@@ -84,7 +89,7 @@ export class BundleManager {
         return checkPathExists(repoPath)
     }
     hasBundle({owner,repo,key,name ='',subPath = ''}){
-        const repoPath = BundleManager.getRepoPath({
+        const repoPath = getRepoPath({
             owner,
             repo,
             name,
@@ -95,7 +100,7 @@ export class BundleManager {
         )
     }
     generateBundle({owner,repo,key,name ='',subPath = ''}){
-        const repoPath = BundleManager.getRepoPath({
+        const repoPath = getRepoPath({
             owner,
             repo,
             name,
@@ -110,7 +115,7 @@ export class BundleManager {
                 output: path.join(repoPath,`./__bundle/${encodeURIComponent(subPath)}.js`),
                 repoPath
             }).then(()=>{
-                this.usersCollection.updateOne(
+                return this.usersCollection.updateOne(
                     {owner,repo,name,key,subPath},
                     { $set: {status: TASKSTATUS.BUNDLED, bundle_expire: Date.now() + expireConfig.timestamp} }
                 )
@@ -118,7 +123,7 @@ export class BundleManager {
         })
     }
     getBundle({owner,repo,key,name ='',subPath = ''}){
-        const repoPath = BundleManager.getRepoPath({
+        const repoPath = getRepoPath({
             owner,
             repo,
             name,
@@ -138,7 +143,7 @@ export class BundleManager {
                     await this.generateBundle({owner,repo,key,name,subPath})
                 }
 
-                this.usersCollection.updateOne(
+                await this.usersCollection.updateOne(
                     {owner,repo,key,name,subPath},
                     { $set:{bundle_expire: Date.now() + expireConfig.timestamp, repo_expire: Date.now() + expireConfig.timestamp} }
                 )
@@ -149,9 +154,9 @@ export class BundleManager {
         })
     }
     async deleteExpiredResource(){
-        const files = await fs.readdir(BundleManager.resourcesFolderPath)
+        const files = await fs.readdir(resourcesFolderPath)
         for(let file of files){
-            const fullPath = path.join(BundleManager.resourcesFolderPath, file)
+            const fullPath = path.join(resourcesFolderPath, file)
             const stat = await fs.lstat(fullPath);
             if(stat.isDirectory()){
                 const [key,owner,repo,name=''] = file.split('@')
@@ -199,6 +204,8 @@ export class BundleManager {
     }
 }
 
+// new BundleManager(usersCollection)
+
 
 router.get(async (req,res)=>{
     const {query,headers} = req
@@ -210,18 +217,18 @@ router.get(async (req,res)=>{
     if(await usersCollection.findOne({key,owner,repo,name,subPath})){
         return res.status(200)
     } // filter duplicate requests
-
-    const bundleManager = new BundleManager(usersCollection)
-
-    bundleManager.getBundle({
-        owner,
-        repo,
-        key,
-        name,
-        subPath
-    }).then(()=>{
-        return req.dbClient.close()
-    })
+    await usersCollection.insertOne({key,owner,repo,name,subPath, status: TASKSTATUS.INIT})
+    // const bundleManager = new BundleManager(usersCollection)
+    //
+    // bundleManager.getBundle({
+    //     owner,
+    //     repo,
+    //     key,
+    //     name,
+    //     subPath
+    // }).then(()=>{
+    //     return req.dbClient.close()
+    // })
     return res.status(200)
 })
 export default router.handler({

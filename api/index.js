@@ -17,7 +17,7 @@ export const submitTask = async ({params={},headers={},signal})=>{
         return acc
     },'')
     const visitorId = await getFingerprint()
-    return fetch(process.env.URL  + `/api/submit_task?${queryStr}`,{
+    return fetch(process.env.NEXT_PUBLIC_URL  + `/api/submit_task?${queryStr}`,{
         headers:{
             Authorization: visitorId,
             ...headers

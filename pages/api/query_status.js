@@ -1,5 +1,5 @@
 import path from "path";
-import {getBundleFiles, TASKSTATUS} from "@/pages/server_utils";
+import {getBundleFiles, getRepoPath, resourcesFolderPath, TASKSTATUS} from "@/pages/server_utils";
 import router from '@/database.mjs'
 
 router.get(async (req,res)=>{
@@ -12,19 +12,20 @@ router.get(async (req,res)=>{
     ).toArray()
     const bundledDir = users.filter(user=> user.status === TASKSTATUS.BUNDLED).map(user=>{
         const {owner,repo,name} = user
-        const repoPath = Cache.getRepoPath({owner,repo,key,name})
-        return path.join(Cache.resourcesFolderPath,repoPath)
+        return getRepoPath({owner,repo,key,name})
     })
-    const repoClonedList = users.filter(user=> user.status === TASKSTATUS.REPOCLONEDONE).map(user=>{
-        const {owner,repo,name,subPath} = user
+    const interruptedList = users.filter(user=> user.status !== TASKSTATUS.BUNDLED).map(user=>{
+        const {owner,repo,name,subPath,status} = user
         return [
             {
                 owner,
                 repo,
-                name
+                name,
+                subPath,
+                status
             },
             {
-                bundleFileName: subPath,
+                bundleFileName: user.subPath,
                 bundleFile: null
             }
         ]
@@ -32,7 +33,7 @@ router.get(async (req,res)=>{
     const bundledFiles = await getBundleFiles(bundledDir)
     await req.dbClient.close()
     return res.status(200).json({
-        files: bundledFiles.concat(repoClonedList)
+        files: bundledFiles.concat(interruptedList)
     })
 })
 

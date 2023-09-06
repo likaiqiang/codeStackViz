@@ -48,7 +48,8 @@ export const getBundleFiles = async (files)=>{
             return [{
                 owner,
                 repo,
-                name
+                name,
+                status: TASKSTATUS.BUNDLED
             }, await Promise.all(
                 bundled.map(async ({bundleFileName, bundleFilePromise}) => {
                     return {
@@ -59,4 +60,9 @@ export const getBundleFiles = async (files)=>{
             )]
         })
     )
+}
+export const resourcesFolderPath = path.join(process.cwd(),'public/resources')
+
+export const getRepoPath = ({owner,repo,key,name =''})=>{
+    return path.join(resourcesFolderPath,`${key}@${encodeURIComponent(owner)}@${encodeURIComponent(repo)}` + (name ? `@${encodeURIComponent(name)}` : ''))
 }

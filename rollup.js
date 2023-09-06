@@ -8,7 +8,9 @@ const fs = require("fs");
 const babel = require("@rollup/plugin-babel");
 const babelCore = require('@babel/core')
 const typescript = require('@rollup/plugin-typescript')
-const minimatch = require('minimatch')
+const {minimatch} = require('minimatch');
+const Hjson = require('hjson')
+const ts = require('typescript');
 // const { convertLogLevel, createHandler, createLogger, LogLevel } = require("typescript-paths")
 // const ts = require('typescript')
 // const webpack = require('webpack');
@@ -97,21 +99,56 @@ const rollupBuild = ({entry,output,repoPath})=>{
         rootDir: repoPath
     })
 
+    let buildDir = findFileUpwards({
+        fileName: 'package.json',
+        startFilePath: entry,
+        rootDir: repoPath
+    })
+
+    if(!buildDir.endsWith(path.sep)) buildDir+=path.sep
+
     // const compilerOptions = tsConfigPath ? JSON.parse(fs.readFileSync(tsConfigPath,'utf-8')).compilerOptions : {}
-    const tsConfig = tsConfigPathDir ?
-        JSON.parse(
-            fs.readFileSync(
-                path.join(tsConfigPathDir,'tsconfig.json'),
-                'utf-8'
-            ))
-        : {}
-    const {compilerOptions} = tsConfig
-    const {baseUrl = '.', paths = {}} = compilerOptions
+    // const tsConfig = tsConfigPathDir ?
+    //     Hjson.parse(
+    //         fs.readFileSync(
+    //             path.join(tsConfigPathDir,'tsconfig.json'),
+    //             'utf-8'
+    //         ))
+    //     : {}
+
+    const tsConfig = ts.readConfigFile(path.join(tsConfigPathDir,'tsconfig.json'), ts.sys.readFile);
+    const parsedConfig = ts.parseJsonConfigFileContent(tsConfig.config, ts.sys, tsConfigPathDir);
+
+    const compilerOptions = parsedConfig.options
+    const {baseUrl = '.'} = compilerOptions
 
     const finalBaseUrl = path.join(
         tsConfigPathDir,
         baseUrl
     )
+
+    const include = Array.isArray(tsConfig.config.include) ? tsConfig.config.include : [tsConfig.config.include].filter(t=>!!t)
+    const exclude = Array.isArray(tsConfig.config.exclude) ? tsConfig.config.exclude : [tsConfig.config.exclude].filter(t=>!!t)
+    const finalInclude = include.map(pah=>{
+        return path.join(tsConfigPathDir, pah)
+    }).filter(pah=>{
+        let pattern = path.sep.replace(/\\/g, '\\\\');
+        return minimatch(
+            pah.replace(new RegExp(pattern,'g'),'/'),
+            (buildDir + '**').replace(new RegExp(pattern,'g'),'/')
+        )
+    })
+    const finalExclude = exclude.map(pah=>{
+        return path.join(tsConfigPathDir, pah)
+    })
+        .filter(pah=>{
+            let pattern = path.sep.replace(/\\/g, '\\\\');
+            return minimatch(
+                pah.replace(new RegExp(pattern,'g'),'/'),
+                (buildDir + '**').replace(new RegExp(pattern,'g'),'/')
+            )
+        })
+        .concat([`${tsConfigPathDir}/node_modules/**`,`${tsConfigPathDir}/__bundle/**`])
 
     return rollup({
         input: entry,
@@ -125,17 +162,19 @@ const rollupBuild = ({entry,output,repoPath})=>{
             }),// 解析 node_modules 中的模块
             typescript({
                 compilerOptions:{
-                    target: "ES2021", //safe
+                    target: "ES2020", //safe
                     module: "ESNext",
                     removeComments: false,
                     skipLibCheck: true,
-                    jsx: "preserve",
                     allowJs: true,
-                    paths: compilerOptions.paths,
-                    baseUrl: finalBaseUrl
+                    noImplicitAny: false,
+                    baseUrl: finalBaseUrl,
+                    allowImportingTsExtensions:true,
+                    paths: compilerOptions.paths
                 },
-                include: `${tsConfigPathDir}/**/*.(cts|mts|ts|tsx|js|jsx|mjs|cjs)`,
-                exclude: [`${tsConfigPathDir}/node_modules/**`,`${tsConfigPathDir}/__bundle/**`]
+                include: finalInclude,
+                exclude: finalExclude,
+                typescript: ts
             }), // 之所以不用babel是因为 1. babel不能明确指定编译为某个JavaScript版本. 2. babel编译后的代码可读性不好
         ],
         external: external()
