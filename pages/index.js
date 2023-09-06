@@ -15,7 +15,7 @@ import 'bootstrap-icons/font/bootstrap-icons.min.css'
 import Modal from 'react-modal';
 import {useLocalStorage,renderMaxLevel as defaultRenderMaxLevel} from "@/pages/utils";
 import Settings from "@/components/Settings";
-import {getBundle, getRecommentBundles} from "@/api";
+import {getBundle, getRecommendBundles, getStatus} from "@/api";
 import ReactDOM from "react-dom";
 import PageContext from '@/context/index'
 import CustomModal from "@/components/CustomModal";
@@ -38,7 +38,7 @@ const parseCacheStr = (str) => {
 }
 
 
-export default function Home() {
+export default function Home({recommend}) {
 
     const [code, setCode] = useState('')
 
@@ -49,9 +49,7 @@ export default function Home() {
         index: -1
     })
     const modalRef = useRef()
-    const [settings,setSetings] = useImmer({
-        list:[]
-    })
+
     const graphvizRef = useRef()
     const push = (id) => {
         setHistory(draft => {
@@ -129,12 +127,7 @@ export default function Home() {
         //     promise = null
         // }
 
-        getRecommentBundles().then(res=>{
-            setSetings(draft => {
-                draft.list = res.files
-            })
-            modalRef.current.show()
-        })
+        modalRef.current.show()
 
         // getBundle({}).then(({bundle})=>{
         //     const config = getConfigByCode({code:bundle})
@@ -240,7 +233,7 @@ export default function Home() {
 
                         >
                             <Settings
-                                list={settings.list}
+                                list={recommend}
                                 onItemClick={(bundleFile) => {
 
                                     // const {displayFunc = []} = getBatchConfigByCode({code: bundleFile})
@@ -294,9 +287,12 @@ export default function Home() {
     )
 }
 
-export function getServerSideProps() {
+export async function getServerSideProps() {
+    const {files: recommend} = await getRecommendBundles()
     return {
-        props: {}
+        props: {
+            recommend
+        }
     }
 }
 

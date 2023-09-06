@@ -157,14 +157,14 @@ const rollupBuild = ({entry,output,repoPath})=>{
 // const testOp = "D:\\pro\\js-code-view\\public\\recommend\\vuejs@vue\\__bundle\\src%2Fcompiler%2Findex.ts.js"
 // const repoPath = "D:\\pro\\js-code-view\\public\\recommend\\vuejs@vue"
 
-const testEntry = 'D:\\pro\\js-code-view\\public\\recommend\\axios@axios\\lib\\axios.js'
-const testOp = "D:\\pro\\js-code-view\\public\\recommend\\axios@axios\\__bundle\\lib%2Faxios.js.js"
-const repoPath = "D:\\pro\\js-code-view\\public\\recommend\\axios@axios"
-
-rollupBuild({
-    entry: testEntry,
-    output: testOp,
-    repoPath
-})
+// const testEntry = 'D:\\pro\\js-code-view\\public\\recommend\\axios@axios\\lib\\axios.js'
+// const testOp = "D:\\pro\\js-code-view\\public\\recommend\\axios@axios\\__bundle\\lib%2Faxios.js.js"
+// const repoPath = "D:\\pro\\js-code-view\\public\\recommend\\axios@axios"
+//
+// rollupBuild({
+//     entry: testEntry,
+//     output: testOp,
+//     repoPath
+// })
 
 module.exports = rollupBuild

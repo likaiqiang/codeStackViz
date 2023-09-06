@@ -3,8 +3,8 @@ import fs from 'fs/promises'
 import Git from 'nodegit'
 import rollup from "@/rollup";
 import {rimraf} from 'rimraf'
-import {MongoClient} from 'mongodb'
 import {TASKSTATUS,checkPathExists} from "@/pages/server_utils";
+import router from '@/database.mjs'
 
 
 const expireConfig = {
@@ -21,16 +21,14 @@ const delay = (timer=1000)=>{
     })
 }
 
-export class Cache {
-    db
+export class BundleManager {
     usersCollection
     static resourcesFolderPath = path.join(process.cwd(),'public/resources')
     static getRepoPath({owner,repo,key,name =''}){
-        return path.join(Cache.resourcesFolderPath,`${key}@${encodeURIComponent(owner)}@${encodeURIComponent(repo)}` + (name ? `@${encodeURIComponent(name)}` : ''))
+        return path.join(BundleManager.resourcesFolderPath,`${key}@${encodeURIComponent(owner)}@${encodeURIComponent(repo)}` + (name ? `@${encodeURIComponent(name)}` : ''))
     }
-    constructor(db) {
-        this.db = db
-        this.usersCollection = db.collection('users')
+    constructor(usersCollection) {
+        this.usersCollection = usersCollection
         const checkExpired = ()=>{
             this.deleteExpiredResource().then(async ()=>{
                 await delay()
@@ -38,9 +36,21 @@ export class Cache {
             })
         }
         // checkExpired()
+        this.checkTask()
+    }
+    async checkTask(){
+        const interruptedTask = await (this.usersCollection.find({status: { $ne: TASKSTATUS.BUNDLED }})).toArray()
+        for(let task of interruptedTask){
+            if(task.status === TASKSTATUS.INIT){
+                this.cloneRepo(task)
+            }
+            if(task.status === TASKSTATUS.REPOCLONEDONE){
+                this.generateBundle(task)
+            }
+        }
     }
     async cloneRepo({owner,repo,key,name ='',subPath=''}){
-        const repoPath = Cache.getRepoPath({
+        const repoPath = BundleManager.getRepoPath({
             owner,
             repo,
             name,
@@ -54,9 +64,10 @@ export class Cache {
             subPath,
             status:TASKSTATUS.INIT
         })
+        await rimraf(repoPath)
         return Git.Clone(`https://github.com/${owner}/${repo}.git` + (name ? ` -b ${name}` : ''), repoPath ).then(()=>{
             const gitDir = path.join(repoPath, '.git')
-            this.db.updateOne(
+            this.usersCollection.updateOne(
                 {owner,repo,name,key,subPath},
                 { $set: {status: TASKSTATUS.REPOCLONEDONE} }
             )
@@ -64,7 +75,7 @@ export class Cache {
         })
     }
     hasRepo({owner,repo,key,name =''}){
-        const repoPath = Cache.getRepoPath({
+        const repoPath = BundleManager.getRepoPath({
             owner,
             repo,
             name,
@@ -73,7 +84,7 @@ export class Cache {
         return checkPathExists(repoPath)
     }
     hasBundle({owner,repo,key,name ='',subPath = ''}){
-        const repoPath = Cache.getRepoPath({
+        const repoPath = BundleManager.getRepoPath({
             owner,
             repo,
             name,
@@ -84,7 +95,7 @@ export class Cache {
         )
     }
     generateBundle({owner,repo,key,name ='',subPath = ''}){
-        const repoPath = Cache.getRepoPath({
+        const repoPath = BundleManager.getRepoPath({
             owner,
             repo,
             name,
@@ -99,7 +110,7 @@ export class Cache {
                 output: path.join(repoPath,`./__bundle/${encodeURIComponent(subPath)}.js`),
                 repoPath
             }).then(()=>{
-                this.db.updateOne(
+                this.usersCollection.updateOne(
                     {owner,repo,name,key,subPath},
                     { $set: {status: TASKSTATUS.BUNDLED, bundle_expire: Date.now() + expireConfig.timestamp} }
                 )
@@ -107,7 +118,7 @@ export class Cache {
         })
     }
     getBundle({owner,repo,key,name ='',subPath = ''}){
-        const repoPath = Cache.getRepoPath({
+        const repoPath = BundleManager.getRepoPath({
             owner,
             repo,
             name,
@@ -138,9 +149,9 @@ export class Cache {
         })
     }
     async deleteExpiredResource(){
-        const files = await fs.readdir(Cache.resourcesFolderPath)
+        const files = await fs.readdir(BundleManager.resourcesFolderPath)
         for(let file of files){
-            const fullPath = path.join(Cache.resourcesFolderPath, file)
+            const fullPath = path.join(BundleManager.resourcesFolderPath, file)
             const stat = await fs.lstat(fullPath);
             if(stat.isDirectory()){
                 const [key,owner,repo,name=''] = file.split('@')
@@ -189,76 +200,33 @@ export class Cache {
 }
 
 
-export default async function handler(req,res){
-    if (req.method.toUpperCase() !== 'GET') {
-        return res.status(405).json({ error: 'Method not allowed' });
-    }
+router.get(async (req,res)=>{
     const {query,headers} = req
     const {owner,repo,name,subPath} = query
     const {authorization:key} = headers
 
-    const client = await MongoClient.connect('mongodb://localhost:27017')
-    const db = client.db('code_view')
-    const usersCollection = db.collection('users')
+    const usersCollection = req.db.collection('users')
+
     if(await usersCollection.findOne({key,owner,repo,name,subPath})){
         return res.status(200)
     } // filter duplicate requests
 
+    const bundleManager = new BundleManager(usersCollection)
 
-    const cacheManage = new Cache(db)
-    cacheManage.getBundle({
+    bundleManager.getBundle({
         owner,
         repo,
         key,
         name,
         subPath
     }).then(()=>{
-        return client.close()
+        return req.dbClient.close()
     })
-    // const bundle = await cacheManage.getBundle({
-    //     owner:'babel',
-    //     repo: 'babel',
-    //     name:'',
-    //     subPath:'packages/babel-generator/src/index.ts',
-    //     keyL:authorization
-    // })
-
-//     const bundle = `
-//     class Generator extends Printer {
-//   constructor(ast, opts = {}, code) {
-//     const format = normalizeOptions(code, opts);
-//     const map = opts.sourceMaps ? new SourceMap(opts, code) : null;
-//     super(format, map);
-//     this.ast = ast;
-//   }
-//   ast;
-//
-//   /**
-//    * Generate code and sourcemap from ast.
-//    *
-//    * Appends comments that weren't attached to any node to the end of the generated output.
-//    */
-//
-//   generate() {
-//     return super.generate(this.ast);
-//   }
-// }
-//
-// /**
-//  * Turns an AST into code, maintaining sourcemaps, user preferences, and valid output.
-//  * @param ast - the abstract syntax tree from which to generate output code.
-//  * @param opts - used for specifying options for code generation.
-//  * @param code - the original source code, used for source maps.
-//  * @returns - an object containing the output code and source map.
-//  */
-// function generate(ast, opts, code) {
-//   const gen = new Generator(ast, opts, code);
-//   return gen.generate();
-// }
-//
-// export { generate as default };
-//
-//
-//     `
     return res.status(200)
-}
+})
+export default router.handler({
+    onError: (err, req, res) => {
+        console.error(err.stack);
+        res.status(err.statusCode || 500).end(err.message);
+    }
+})

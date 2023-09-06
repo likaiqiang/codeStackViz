@@ -15,6 +15,7 @@ export async function checkPathExists(path) {
         return false;
     }
 }
+
 export const getBundleFiles = async (files)=>{
     const bundleTasks = {}
     for (let file of files) {

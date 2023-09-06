@@ -17,7 +17,7 @@ export const submitTask = async ({params={},headers={},signal})=>{
         return acc
     },'')
     const visitorId = await getFingerprint()
-    return fetch(`/api/submit_task?${queryStr}`,{
+    return fetch(process.env.URL  + `/api/submit_task?${queryStr}`,{
         headers:{
             Authorization: visitorId,
             ...headers
@@ -28,7 +28,7 @@ export const submitTask = async ({params={},headers={},signal})=>{
 
 export const getStatus = async ({headers={},signal})=>{
     const visitorId = await getFingerprint()
-    return fetch('/api/query_status',{
+    return fetch(process.env.NEXT_PUBLIC_URL  + '/api/query_status',{
         headers:{
             Authorization: visitorId,
             ...headers
@@ -36,6 +36,6 @@ export const getStatus = async ({headers={},signal})=>{
         signal
     }).then(res=>res.json())
 }
-export const getRecommentBundles = async ()=>{
-    return fetch('/api/get_recommend_repo').then(res=>res.json())
+export const getRecommendBundles = async ()=>{
+    return fetch(process.env.URL  + '/api/get_recommend_repo').then(res=>res.json())
 }
