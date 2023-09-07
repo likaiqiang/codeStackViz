@@ -105,50 +105,46 @@ const rollupBuild = ({entry,output,repoPath})=>{
         rootDir: repoPath
     })
 
-    if(!buildDir.endsWith(path.sep)) buildDir+=path.sep
+    if(buildDir && !buildDir.endsWith(path.sep)) buildDir+=path.sep
 
-    // const compilerOptions = tsConfigPath ? JSON.parse(fs.readFileSync(tsConfigPath,'utf-8')).compilerOptions : {}
-    // const tsConfig = tsConfigPathDir ?
-    //     Hjson.parse(
-    //         fs.readFileSync(
-    //             path.join(tsConfigPathDir,'tsconfig.json'),
-    //             'utf-8'
-    //         ))
-    //     : {}
+    let tsConfig = {},
+        parsedConfig = {},
+        finalBaseUrl = buildDir || '.',
+        finalInclude = ['{,**/}*.(cjs|mjs|js|jsx)'],
+        finalExclude = ['node_modules/**',`${repoPath}/__bundle/**`]
 
-    const tsConfig = ts.readConfigFile(path.join(tsConfigPathDir,'tsconfig.json'), ts.sys.readFile);
-    const parsedConfig = ts.parseJsonConfigFileContent(tsConfig.config, ts.sys, tsConfigPathDir);
-
-    const compilerOptions = parsedConfig.options
-    const {baseUrl = '.'} = compilerOptions
-
-    const finalBaseUrl = path.join(
-        tsConfigPathDir,
-        baseUrl
-    )
-
-    const include = Array.isArray(tsConfig.config.include) ? tsConfig.config.include : [tsConfig.config.include].filter(t=>!!t)
-    const exclude = Array.isArray(tsConfig.config.exclude) ? tsConfig.config.exclude : [tsConfig.config.exclude].filter(t=>!!t)
-    const finalInclude = include.map(pah=>{
-        return path.join(tsConfigPathDir, pah)
-    }).filter(pah=>{
-        let pattern = path.sep.replace(/\\/g, '\\\\');
-        return minimatch(
-            pah.replace(new RegExp(pattern,'g'),'/'),
-            (buildDir + '**').replace(new RegExp(pattern,'g'),'/')
+    if(tsConfigPathDir){
+        tsConfig = ts.readConfigFile(path.join(tsConfigPathDir,'tsconfig.json'), ts.sys.readFile);
+        parsedConfig = ts.parseJsonConfigFileContent(tsConfig.config, ts.sys, tsConfigPathDir);
+        const {baseUrl = '.'} = parsedConfig.options || {}
+        finalBaseUrl = path.join(
+            tsConfigPathDir,
+            baseUrl
         )
-    })
-    const finalExclude = exclude.map(pah=>{
-        return path.join(tsConfigPathDir, pah)
-    })
-        .filter(pah=>{
+
+        const include = Array.isArray(tsConfig.config.include) ? tsConfig.config.include : [tsConfig.config.include].filter(t=>!!t)
+        const exclude = Array.isArray(tsConfig.config.exclude) ? tsConfig.config.exclude : [tsConfig.config.exclude].filter(t=>!!t)
+        finalInclude = include.map(pah=>{
+            return path.join(tsConfigPathDir, pah)
+        }).filter(pah=>{
             let pattern = path.sep.replace(/\\/g, '\\\\');
             return minimatch(
                 pah.replace(new RegExp(pattern,'g'),'/'),
                 (buildDir + '**').replace(new RegExp(pattern,'g'),'/')
             )
         })
-        .concat([`${tsConfigPathDir}/node_modules/**`,`${tsConfigPathDir}/__bundle/**`])
+        finalExclude = exclude.map(pah=>{
+            return path.join(tsConfigPathDir, pah)
+        })
+            .filter(pah=>{
+                let pattern = path.sep.replace(/\\/g, '\\\\');
+                return minimatch(
+                    pah.replace(new RegExp(pattern,'g'),'/'),
+                    (buildDir + '**').replace(new RegExp(pattern,'g'),'/')
+                )
+            }).concat(finalExclude)
+    }
+
 
     return rollup({
         input: entry,
@@ -170,10 +166,10 @@ const rollupBuild = ({entry,output,repoPath})=>{
                     noImplicitAny: false,
                     baseUrl: finalBaseUrl,
                     allowImportingTsExtensions:true,
-                    paths: compilerOptions.paths
+                    paths: tsConfigPathDir ? parsedConfig.options.paths :undefined
                 },
-                include: finalInclude,
-                exclude: finalExclude,
+                include: tsConfigPathDir ? finalInclude : undefined,
+                exclude: tsConfigPathDir ? finalExclude : undefined,
                 typescript: ts
             }), // 之所以不用babel是因为 1. babel不能明确指定编译为某个JavaScript版本. 2. babel编译后的代码可读性不好
         ],

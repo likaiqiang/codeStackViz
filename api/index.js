@@ -7,22 +7,15 @@ async function getFingerprint() {
 }
 
 export const submitTask = async ({params={},headers={},signal})=>{
-    const queryStr = Object.keys(params).reduce((acc,key,i)=>{
-        if(params[key]){
-            if(i === Object.keys(params).length - 1){
-                return acc += `${key}=${params[key]}`
-            }
-            return acc += `${key}=${params[key]}&`
-        }
-        return acc
-    },'')
     const visitorId = await getFingerprint()
-    return fetch(process.env.NEXT_PUBLIC_URL  + `/api/submit_task?${queryStr}`,{
+    return fetch(process.env.NEXT_PUBLIC_URL  + `/api/submit_task`,{
         headers:{
             Authorization: visitorId,
             ...headers
         },
-        signal
+        body: JSON.stringify(params),
+        signal,
+        method: 'POST'
     })
 }
 

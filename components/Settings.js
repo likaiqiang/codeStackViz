@@ -8,18 +8,16 @@ import {useCallback, useContext, useEffect, useRef, useState} from "react";
 import Whether,{If,Else} from "@/components/Whether";
 import {createDraft, finishDraft} from "immer"
 import CircularProgress from '@mui/material/CircularProgress';
-import { SnackbarProvider, useSnackbar } from 'notistack';
-import {Autocomplete} from "@mui/material";
+import {Autocomplete,Snackbar} from "@mui/material";
 import {useMemoizedFn} from "ahooks/lib";
 import {debounce} from 'lodash-es'
-import Modal from 'react-modal';
 import {getBundle, getStatus, submitTask} from "@/api";
-import {} from 'react'
 import {renderMaxLevel as defaultRenderMaxLevel, waitForPromise} from "@/pages/utils";
 import {getConfigByCode} from "@/pages/cg";
 import SelectEntryModal from "@/components/SelectEntryModal";
 import ReactDOM from "react-dom";
 import PageContext from "@/context";
+import {useImmer} from "use-immer";
 
 
 const TreeCustomItem = ({list = [],parentIndex = []})=>{
@@ -52,7 +50,10 @@ export default (props)=>{
     const [loading,setLoading] = useState(false)
     const [confirmLoading,setConfirmLoading] = useState(false)
     const githubRef = useRef({})
-    const { enqueueSnackbar } = useSnackbar();
+    const [toast,setToast] = useImmer({
+        isOpen: false,
+        message:''
+    })
 
     const handleInputChange = useMemoizedFn((event, newInputValue)=>{
         if(newInputValue){
@@ -82,7 +83,10 @@ export default (props)=>{
         const lg = language.map(lan=> `language:${lan}`).join('+')
         return fetch(`https://api.github.com/search/repositories?q=${lg}+${keyword}`).then(res=>res.json()).then((res)=>{
             if(res.message){
-                enqueueSnackbar(res.message)
+                setToast(draft => {
+                    draft.isOpen = true
+                    draft.message = res.message
+                })
             }
             else{
                 setOptions(res.items)
@@ -117,7 +121,7 @@ export default (props)=>{
     },[])
 
     return (
-        <SnackbarProvider maxSnack={3}>
+        <>
             <div className={'libSearch'}>
                 <div className={'libInput'}>
                     <Autocomplete
@@ -153,26 +157,26 @@ export default (props)=>{
                                                 <DataFor list={item[1]}>
                                                     {
                                                         (bundled)=>{
-                                                          return (
-                                                              <dd onClick={()=>{
-                                                                  const {displayFunc} = getBatchConfigByCode({code: bundled.bundleFile})
+                                                            return (
+                                                                <dd onClick={()=>{
+                                                                    const {displayFunc} = getBatchConfigByCode({code: bundled.bundleFile})
 
-                                                                  let filtedDisplayFunc = displayFunc.filter(([vertex,dotJson])=>{
-                                                                      return dotJson.maxLevel > defaultRenderMaxLevel
-                                                                  })
-                                                                  if(filtedDisplayFunc.length === 0){
-                                                                      filtedDisplayFunc = displayFunc.filter(([_,dotJson])=>{
-                                                                          return dotJson.statements.length > defaultRenderMaxLevel
-                                                                      })
-                                                                  }
+                                                                    let filtedDisplayFunc = displayFunc.filter(([vertex,dotJson])=>{
+                                                                        return dotJson.maxLevel > defaultRenderMaxLevel
+                                                                    })
+                                                                    if(filtedDisplayFunc.length === 0){
+                                                                        filtedDisplayFunc = displayFunc.filter(([_,dotJson])=>{
+                                                                            return dotJson.statements.length > defaultRenderMaxLevel
+                                                                        })
+                                                                    }
 
-                                                                  selectEntryModalRef.current.show()
-                                                                  setDisplayFunc(filtedDisplayFunc)
+                                                                    selectEntryModalRef.current.show()
+                                                                    setDisplayFunc(filtedDisplayFunc)
 
-                                                              }}>
-                                                                  <a href="javascript:;">{bundled.bundleFileName}</a>
-                                                              </dd>
-                                                          )
+                                                                }}>
+                                                                    <a href="javascript:;">{bundled.bundleFileName}</a>
+                                                                </dd>
+                                                            )
                                                         }
                                                     }
                                                 </DataFor>
@@ -223,7 +227,10 @@ export default (props)=>{
                                                             }
                                                         }
                                                         else {
-                                                            enqueueSnackbar('invalid javascript file')
+                                                            setToast(draft => {
+                                                                draft.isOpen = true
+                                                                draft.message = 'invalid javascript file'
+                                                            })
                                                         }
                                                     }
                                                 }}
@@ -240,9 +247,13 @@ export default (props)=>{
                                                         submitTask({
                                                             params: githubRef.current
                                                         }).then(()=>{
-                                                            enqueueSnackbar('the submission is successful, please check it in the settings')
+                                                            setToast(draft => {
+                                                                draft.isOpen = true
+                                                                draft.message = 'the submission is successful, please check it in the settings'
+                                                            })
+                                                        }).finally(()=>{
+                                                            setConfirmLoading(false)
                                                         })
-
                                                     }}
                                                 >
                                                     confirm
@@ -259,12 +270,28 @@ export default (props)=>{
                     </Else>
                 </Whether>
             </div>
+            <Snackbar
+                anchorOrigin={{
+                    vertical: 'top',
+                    horizontal: 'center',
+                }}
+                open={toast.isOpen}
+                onClose={()=>{
+                    setToast(draft => {
+                        draft.isOpen = false
+                        draft.message = ''
+                    })
+                }}
+                autoHideDuration={1500}
+                message={toast.message}
+
+            />
             {
                 ReactDOM.createPortal(
                     <SelectEntryModal ref={selectEntryModalRef} list={displayFunc}/>,
                     document.body
                 )
             }
-        </SnackbarProvider>
+        </>
     )
 }

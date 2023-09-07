@@ -30,7 +30,7 @@ router.get(async (req,res)=>{
             }
         ]
     })
-    const bundledFiles = await getBundleFiles(bundledDir)
+    const bundledFiles = await getBundleFiles(bundledDir,usersCollection)
     // await req.dbClient.close()
     return res.status(200).json({
         files: bundledFiles.concat(interruptedList)

@@ -3,8 +3,10 @@ const path = require("path");
 
 const TASKSTATUS = {
     INIT: 0,
-    REPOCLONEDONE: 1,
-    BUNDLED:2
+    REPOCLONEDEND: 1,
+    BUNDLED:2,
+    REPOCLONEDENDERROR: 3,
+    BUNDLEDERROR: 4
 }
 
 async function checkPathExists(path) {
@@ -16,7 +18,7 @@ async function checkPathExists(path) {
     }
 }
 
-const getBundleFiles = async (files)=>{
+const getBundleFiles = async (files,usersCollection)=>{
     const bundleTasks = {}
     for (let file of files) {
         const stat = await fs.stat(path.join(file))
@@ -43,18 +45,26 @@ const getBundleFiles = async (files)=>{
 
     return await Promise.all(
         Object.entries(bundleTasks).map(async ([repoPathStr, bundled]) => {
-            const [owner, repo, name = ''] = repoPathStr.split('@')
+            const [key,owner, repo, name = ''] = repoPathStr.split('@')
 
             return [{
+                key,
                 owner,
                 repo,
                 name,
                 status: TASKSTATUS.BUNDLED
             }, await Promise.all(
                 bundled.map(async ({bundleFileName, bundleFilePromise}) => {
+                    const bundleFile = await bundleFilePromise
+                    if(key !== 1 && usersCollection){
+                        await usersCollection.updateOne(
+                            {key,owner,repo,name,subPath: bundleFileName},
+                            {$set: {bundle_expire: Date.now() + expireConfig.timestamp, repo_expire: Date.now() + expireConfig.timestamp}}
+                        )
+                    }
                     return {
                         bundleFileName,
-                        bundleFile: await bundleFilePromise
+                        bundleFile
                     }
                 })
             )]
@@ -67,10 +77,15 @@ const getRepoPath = ({owner,repo,key,name =''})=>{
     return path.join(resourcesFolderPath,`${key}@${encodeURIComponent(owner)}@${encodeURIComponent(repo)}` + (name ? `@${encodeURIComponent(name)}` : ''))
 }
 
+const expireConfig = {
+    timestamp: 20000
+}
+
 module.exports = {
     getRepoPath,
     resourcesFolderPath,
     getBundleFiles,
     checkPathExists,
-    TASKSTATUS
+    TASKSTATUS,
+    expireConfig
 }
