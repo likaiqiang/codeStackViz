@@ -1,6 +1,6 @@
 import path from "path";
 import {getBundleFiles, getRepoPath, resourcesFolderPath, TASKSTATUS} from "@/pages/server_utils";
-import router from '@/database.mjs'
+import {router} from '@/database.js'
 
 router.get(async (req,res)=>{
     const usersCollection = req.db.collection('users')
@@ -31,7 +31,7 @@ router.get(async (req,res)=>{
         ]
     })
     const bundledFiles = await getBundleFiles(bundledDir)
-    await req.dbClient.close()
+    // await req.dbClient.close()
     return res.status(200).json({
         files: bundledFiles.concat(interruptedList)
     })

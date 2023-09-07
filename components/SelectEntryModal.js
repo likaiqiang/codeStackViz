@@ -1,5 +1,4 @@
 import React, {useState, forwardRef, useImperativeHandle, useContext, useRef} from 'react';
-import Modal from 'react-modal';
 import { TextField, List, ListItem, ListItemText } from '@mui/material';
 import PageContext from '@/context'
 import CustomModal, {modalManager} from "@/components/CustomModal";

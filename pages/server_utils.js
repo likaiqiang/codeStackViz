@@ -1,13 +1,13 @@
-import fs from "fs/promises";
-import path from "path";
+const fs = require("fs/promises");
+const path = require("path");
 
-export const TASKSTATUS = {
+const TASKSTATUS = {
     INIT: 0,
     REPOCLONEDONE: 1,
     BUNDLED:2
 }
 
-export async function checkPathExists(path) {
+async function checkPathExists(path) {
     try {
         await fs.access(path, fs.constants.F_OK);
         return true;
@@ -16,7 +16,7 @@ export async function checkPathExists(path) {
     }
 }
 
-export const getBundleFiles = async (files)=>{
+const getBundleFiles = async (files)=>{
     const bundleTasks = {}
     for (let file of files) {
         const stat = await fs.stat(path.join(file))
@@ -61,8 +61,16 @@ export const getBundleFiles = async (files)=>{
         })
     )
 }
-export const resourcesFolderPath = path.join(process.cwd(),'public/resources')
+const resourcesFolderPath = path.join(process.cwd(),'public/resources')
 
-export const getRepoPath = ({owner,repo,key,name =''})=>{
+const getRepoPath = ({owner,repo,key,name =''})=>{
     return path.join(resourcesFolderPath,`${key}@${encodeURIComponent(owner)}@${encodeURIComponent(repo)}` + (name ? `@${encodeURIComponent(name)}` : ''))
+}
+
+module.exports = {
+    getRepoPath,
+    resourcesFolderPath,
+    getBundleFiles,
+    checkPathExists,
+    TASKSTATUS
 }

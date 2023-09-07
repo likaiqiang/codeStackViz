@@ -1,5 +1,5 @@
-import { MongoClient } from 'mongodb';
-import { createRouter } from 'next-connect';
+const { MongoClient } = require('mongodb');
+const { createRouter } = require('next-connect');
 
 const client = new MongoClient('mongodb://localhost:27017');
 
@@ -12,4 +12,8 @@ async function database(req, res, next) {
 
 const router = createRouter();
 
-export default router.use(database)
+module.exports = {
+    router: router.use(database),
+    client,
+    db
+}

@@ -12,7 +12,6 @@ import {useImmer} from "use-immer";
 import Chat from "@/components/Chat";
 import hotkeys from 'hotkeys-js';
 import 'bootstrap-icons/font/bootstrap-icons.min.css'
-import Modal from 'react-modal';
 import {useLocalStorage,renderMaxLevel as defaultRenderMaxLevel} from "@/pages/utils";
 import Settings from "@/components/Settings";
 import {getBundle, getRecommendBundles, getStatus} from "@/api";
