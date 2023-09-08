@@ -51,8 +51,7 @@ const getBundleFiles = async (files,usersCollection)=>{
                 key,
                 owner,
                 repo,
-                name,
-                status: TASKSTATUS.BUNDLED
+                name
             }, await Promise.all(
                 bundled.map(async ({bundleFileName, bundleFilePromise}) => {
                     const bundleFile = await bundleFilePromise
@@ -64,7 +63,8 @@ const getBundleFiles = async (files,usersCollection)=>{
                     }
                     return {
                         bundleFileName,
-                        bundleFile
+                        bundleFile,
+                        status: TASKSTATUS.BUNDLED
                     }
                 })
             )]

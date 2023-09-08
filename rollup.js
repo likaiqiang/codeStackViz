@@ -105,12 +105,11 @@ const rollupBuild = ({entry,output,repoPath})=>{
         rootDir: repoPath
     })
 
-    if(buildDir && !buildDir.endsWith(path.sep)) buildDir+=path.sep
 
     let tsConfig = {},
         parsedConfig = {},
         finalBaseUrl = buildDir || '.',
-        finalInclude = ['{,**/}*.(cjs|mjs|js|jsx)'],
+        finalInclude = [`${(buildDir || repoPath) + path.sep}**/*.(cts|mts|ts|tsx|cjs|mjs|js|jsx)`],
         finalExclude = ['node_modules/**',`${repoPath}/__bundle/**`]
 
     if(tsConfigPathDir){
@@ -130,7 +129,7 @@ const rollupBuild = ({entry,output,repoPath})=>{
             let pattern = path.sep.replace(/\\/g, '\\\\');
             return minimatch(
                 pah.replace(new RegExp(pattern,'g'),'/'),
-                (buildDir + '**').replace(new RegExp(pattern,'g'),'/')
+                ((buildDir || repoPath) + path.sep +'**').replace(new RegExp(pattern,'g'),'/')
             )
         })
         finalExclude = exclude.map(pah=>{
@@ -140,7 +139,7 @@ const rollupBuild = ({entry,output,repoPath})=>{
                 let pattern = path.sep.replace(/\\/g, '\\\\');
                 return minimatch(
                     pah.replace(new RegExp(pattern,'g'),'/'),
-                    (buildDir + '**').replace(new RegExp(pattern,'g'),'/')
+                    ((buildDir || repoPath) + path.sep +'**').replace(new RegExp(pattern,'g'),'/')
                 )
             }).concat(finalExclude)
     }
@@ -168,8 +167,8 @@ const rollupBuild = ({entry,output,repoPath})=>{
                     allowImportingTsExtensions:true,
                     paths: tsConfigPathDir ? parsedConfig.options.paths :undefined
                 },
-                include: tsConfigPathDir ? finalInclude : undefined,
-                exclude: tsConfigPathDir ? finalExclude : undefined,
+                include: finalInclude,
+                exclude: finalExclude,
                 typescript: ts
             }), // 之所以不用babel是因为 1. babel不能明确指定编译为某个JavaScript版本. 2. babel编译后的代码可读性不好
         ],

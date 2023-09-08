@@ -40,8 +40,9 @@ const parseCacheStr = (str) => {
 export default function Home({recommend}) {
 
     const [code, setCode] = useState('')
-
-    const [cacheEntry, setCacheEntry] = useLocalStorage('entryFuncName', '')
+    const [settings, setSettings] = useImmer({
+        list: recommend
+    })
 
     const [history, setHistory] = useImmer({
         list: [],
@@ -94,48 +95,18 @@ export default function Home({recommend}) {
     }
 
     useEffect(() => {
-        // let promise = null
-        // const controller = new AbortController()
-        // if(cacheEntry){
-        //     const repoConfig = parseCacheStr(cacheEntry)
-        //
-        //     promise = getBundle({params: repoConfig,signal: controller.signal}).then(res => res.json()).then(({bundle}) => {
-        //         return getConfigByCode({code: bundle, filename: cacheEntry})
-        //     }).then(config=>{
-        //         console.log('config',config);
-        //         configRef.current = config
-        //         const {exportVertexs} = config
-        //
-        //         renderFiltedSvg({
-        //             entryFuncId: repoConfig.entryFuncId
-        //         })
-        //         setHistory(draft => {
-        //             draft.list.push(repoConfig.entryFuncId)
-        //             draft.index = draft.index + 1
-        //         })
-        //     })
-        // }
-        // else{
-        //     setModal(draft => {
-        //         draft.isOpen = true
-        //     })
-        // }
 
-        // return () => {
-        //     controller.abort()
-        //     promise = null
-        // }
+        getStatus({}).then(res=>{
+            const {files} = res
+            setSettings(draft => {
+                draft.list = [
+                    ...draft.list,
+                    ...files
+                ]
+            })
+            modalRef.current.show()
+        })
 
-        modalRef.current.show()
-
-        // getBundle({}).then(({bundle})=>{
-        //     const config = getConfigByCode({code:bundle})
-        //     configRef.current = config
-        //     const {exportVertexs} = config
-        //     renderFiltedSvg({
-        //         entryFuncId: exportVertexs[0].id
-        //     })
-        // })
     }, []);
 
     useEffect(() => {
@@ -180,7 +151,8 @@ export default function Home({recommend}) {
         <div className={'codeViewContainer'}>
             <PageContext.Provider value={{
                 renderFiltedSvg,
-                getBatchConfigByCode
+                getBatchConfigByCode,
+                push
             }}>
                 <Graphviz
                     className={'codeSvg'}
@@ -232,44 +204,7 @@ export default function Home({recommend}) {
 
                         >
                             <Settings
-                                list={recommend}
-                                onItemClick={(bundleFile) => {
-
-                                    // const {displayFunc = []} = getBatchConfigByCode({code: bundleFile})
-
-                                    // renderFiltedSvg({
-                                    //     entryFuncId: id
-                                    // }).then(() => {
-                                    //     setModal(draft => {
-                                    //         draft.index = index
-                                    //         draft.isOpen = false
-                                    //     })
-                                    //     setHistory(draft => {
-                                    //         draft.list = [id]
-                                    //         draft.index = 0
-                                    //     })
-                                    //     setCacheEntry({
-                                    //         ...cacheEntry,
-                                    //         [filename]: id
-                                    //     })
-                                    // })
-                                }}
-                                onBundle={config=>{
-                                    configRef.current = config
-                                    const {exportVertexs} = config
-                                    if(exportVertexs.length){
-                                        renderFiltedSvg({
-                                            entryFuncId: exportVertexs[0].id
-                                        })
-                                        setHistory(draft => {
-                                            draft.list.push(exportVertexs[0].id)
-                                            draft.index = draft.index + 1
-                                        })
-                                        setModal(draft => {
-                                            draft.isOpen = false
-                                        })
-                                    }
-                                }}
+                                list={settings.list}
                             />
                         </CustomModal>,
                         document.body

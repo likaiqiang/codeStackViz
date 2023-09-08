@@ -1,13 +1,14 @@
-import React, {useState, forwardRef, useImperativeHandle, useContext, useRef} from 'react';
-import { TextField, List, ListItem, ListItemText } from '@mui/material';
+import React, {useState, forwardRef, useImperativeHandle, useContext, useRef, useEffect} from 'react';
+import {TextField, List, ListItem, ListItemText, IconButton} from '@mui/material';
+import ClearIcon from '@material-ui/icons/Clear';
 import PageContext from '@/context'
 import CustomModal, {modalManager} from "@/components/CustomModal";
-
+import Whether from "@/components/Whether";
 
 const SelectEntryModal = (props,ref)=>{
-    const {list = []} = props
+    const {list = [],updateList=()=>{}} = props
     const [searchText, setSearchText] = useState('');
-    const {renderFiltedSvg} = useContext(PageContext)
+    const {renderFiltedSvg,push} = useContext(PageContext)
     const modalRef = useRef()
 
     useImperativeHandle(ref,()=>{
@@ -25,24 +26,18 @@ const SelectEntryModal = (props,ref)=>{
             ref={modalRef}
             onRequestClose={() => modalRef.current.hide()}
         >
-            <TextField
-                label="please select or search a entry function"
-                value={searchText}
-                onChange={e => setSearchText(e.target.value)}
-                style={{'width':'100%'}}
-
-            />
             <div style={{ maxHeight: 200, overflow: 'auto' }}>
                 <List>
                     {list.map(item => (
-                        <ListItem button={true} key={item[0].id} onClick={()=>{
+                        <ListItem button={true} key={item.id} onClick={()=>{
                             renderFiltedSvg({
-                                entryFuncId: item[0].id
+                                entryFuncId: item.id
                             }).then(()=>{
                                 modalManager.closeAllModals()
+                                push(item.id)
                             })
                         }}>
-                            <ListItemText primary={item[0].name} />
+                            <ListItemText primary={item.name} />
                         </ListItem>
                     ))}
                 </List>

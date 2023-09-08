@@ -44,7 +44,7 @@ const TreeCustomItem = ({list = [],parentIndex = []})=>{
 }
 
 export default (props)=>{
-    const {list, onItemClick=()=>{}} = props
+    const {list} = props
     const [treeData,setTreeData] = useState([])
     const [options,setOptions] = useState([])
     const [loading,setLoading] = useState(false)
@@ -114,12 +114,6 @@ export default (props)=>{
     const [displayFunc,setDisplayFunc] = useState([])
     const {getBatchConfigByCode} = useContext(PageContext)
 
-    useEffect(()=>{
-        getStatus({}).then(res=>{
-            console.log('res',res)
-        })
-    },[])
-
     return (
         <>
             <div className={'libSearch'}>
@@ -147,20 +141,22 @@ export default (props)=>{
                 </div>
                 <Whether value={!treeData.length}>
                     <If>
-                        <dl>
+                        <dl style={{maxHeight: '60vh',overflow:'auto'}}>
                             <DataFor list={list}>
                                 {
                                     (item)=>{
                                         return (
                                             <>
-                                                <dt>{`${item[0].owner}/${item[0].repo}`}</dt>
+                                                <dt style={{opacity: item[1].filter(bun=>bun.status !== 2).length === item[1].length ? '0.4' : 1}}>
+                                                    {`${item[0].owner}/${item[0].repo}`}
+                                                </dt>
                                                 <DataFor list={item[1]}>
                                                     {
                                                         (bundled)=>{
                                                             return (
                                                                 <dd onClick={()=>{
+                                                                    if(bundled.status !== 2) return
                                                                     const {displayFunc} = getBatchConfigByCode({code: bundled.bundleFile})
-
                                                                     let filtedDisplayFunc = displayFunc.filter(([vertex,dotJson])=>{
                                                                         return dotJson.maxLevel > defaultRenderMaxLevel
                                                                     })
@@ -171,10 +167,25 @@ export default (props)=>{
                                                                     }
 
                                                                     selectEntryModalRef.current.show()
-                                                                    setDisplayFunc(filtedDisplayFunc)
+                                                                    setDisplayFunc(
+                                                                        filtedDisplayFunc.map(item=>{
+                                                                            const {id,name} = item[0]
+                                                                            return {
+                                                                                id,
+                                                                                name
+                                                                            }
+                                                                        })
+                                                                    )
 
                                                                 }}>
-                                                                    <a href="javascript:;">{bundled.bundleFileName}</a>
+                                                                    <a
+                                                                        style={{opacity: bundled.status !== 2 ? '0.4': 1, cursor: bundled.status !== 2 ? 'auto' :'pointer'}}
+                                                                        href="javascript:;">
+                                                                        {bundled.bundleFileName}
+                                                                        <Whether value={bundled.status === 4 || bundled.status ===5}>
+                                                                            <span style={{color:'red'}}>(task failed)</span>
+                                                                        </Whether>
+                                                                    </a>
                                                                 </dd>
                                                             )
                                                         }
@@ -198,7 +209,7 @@ export default (props)=>{
                                                 aria-label="file system navigator"
                                                 defaultCollapseIcon={<ExpandMoreIcon />}
                                                 defaultExpandIcon={<ChevronRightIcon />}
-                                                sx={{ height: 240, flexGrow: 1, maxWidth: 400, overflowY: 'auto' }}
+                                                sx={{ maxHeight: '60vh', flexGrow: 1, maxWidth: 400, overflowY: 'auto' }}
                                                 onNodeToggle={(event, nodeIds)=>{
                                                     const {nodeData,nodeDataSet,draft} = getNodeDataByEvent(event)
                                                     const isNodeExpand = nodeIds.includes(nodeDataSet.url)
@@ -225,12 +236,14 @@ export default (props)=>{
                                                                 ...githubRef.current,
                                                                 subPath:filePath
                                                             }
+                                                            setConfirmLoading(false)
                                                         }
                                                         else {
                                                             setToast(draft => {
                                                                 draft.isOpen = true
                                                                 draft.message = 'invalid javascript file'
                                                             })
+                                                            setConfirmLoading(true)
                                                         }
                                                     }
                                                 }}
@@ -249,7 +262,7 @@ export default (props)=>{
                                                         }).then(()=>{
                                                             setToast(draft => {
                                                                 draft.isOpen = true
-                                                                draft.message = 'the submission is successful, please check it in the settings'
+                                                                draft.message = 'The submission is successful, please wait for 5 minutes and check in the settings'
                                                             })
                                                         }).finally(()=>{
                                                             setConfirmLoading(false)
@@ -282,13 +295,13 @@ export default (props)=>{
                         draft.message = ''
                     })
                 }}
-                autoHideDuration={1500}
+                autoHideDuration={toast.duration || 3000}
                 message={toast.message}
 
             />
             {
                 ReactDOM.createPortal(
-                    <SelectEntryModal ref={selectEntryModalRef} list={displayFunc}/>,
+                    <SelectEntryModal ref={selectEntryModalRef} list={displayFunc} updateList={setDisplayFunc}/>,
                     document.body
                 )
             }
