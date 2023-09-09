@@ -1,4 +1,4 @@
-import React, {useMemo} from "react";
+import React from "react";
 import Whether, {Else, If} from "@/components/Whether";
 import ReactMarkdown from "react-markdown";
 import {Prism as SyntaxHighlighter} from "react-syntax-highlighter";

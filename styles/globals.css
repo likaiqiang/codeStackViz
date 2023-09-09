@@ -255,6 +255,19 @@ g.node{
 .libFiles{
   margin-top: 20px;
 }
+.libInput{
+  display: flex;
+  align-items: center;
+}
+.libInput .MuiAutocomplete-root{
+  flex: 1;
+  margin-right: 10px;
+}
+.libInput >svg{
+  width: auto !important;
+  cursor: pointer;
+}
+
 .libFiles .confirmBtn{
   margin-top: 20px;
   display: flex;

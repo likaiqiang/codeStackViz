@@ -1,6 +1,5 @@
 import React, {useState, forwardRef, useImperativeHandle, useContext, useRef, useEffect} from 'react';
 import {TextField, List, ListItem, ListItemText, IconButton} from '@mui/material';
-import ClearIcon from '@material-ui/icons/Clear';
 import PageContext from '@/context'
 import CustomModal, {modalManager} from "@/components/CustomModal";
 import Whether from "@/components/Whether";

@@ -11,13 +11,13 @@ import CircularProgress from '@mui/material/CircularProgress';
 import {Autocomplete,Snackbar} from "@mui/material";
 import {useMemoizedFn} from "ahooks/lib";
 import {debounce} from 'lodash-es'
-import {getBundle, getStatus, submitTask} from "@/api";
-import {renderMaxLevel as defaultRenderMaxLevel, waitForPromise} from "@/utils/client";
-import {getConfigByCode} from "cg";
+import {submitTask} from "@/api";
+import {renderMaxLevel as defaultRenderMaxLevel} from "@/utils/client";
 import SelectEntryModal from "@/components/SelectEntryModal";
 import ReactDOM from "react-dom";
 import PageContext from "@/context";
 import {useImmer} from "use-immer";
+import {RedoOutline} from "antd-mobile-icons";
 
 
 const TreeCustomItem = ({list = [],parentIndex = []})=>{
@@ -44,7 +44,7 @@ const TreeCustomItem = ({list = [],parentIndex = []})=>{
 }
 
 export default (props)=>{
-    const {list} = props
+    const {list, onRefresh=()=>{}} = props
     const [treeData,setTreeData] = useState([])
     const [options,setOptions] = useState([])
     const [loading,setLoading] = useState(false)
@@ -114,6 +114,10 @@ export default (props)=>{
     const [displayFunc,setDisplayFunc] = useState([])
     const {getBatchConfigByCode} = useContext(PageContext)
 
+    useEffect(()=>{
+        onRefresh()
+    },[])
+
     return (
         <>
             <div className={'libSearch'}>
@@ -138,6 +142,7 @@ export default (props)=>{
                         }}
                         renderInput={(params) => <TextField {...params} label="please input a github repo keyword" />}
                     />
+                    <RedoOutline onClick={onRefresh}/>
                 </div>
                 <Whether value={!treeData.length}>
                     <If>
@@ -182,8 +187,11 @@ export default (props)=>{
                                                                         style={{opacity: bundled.status !== 2 ? '0.4': 1, cursor: bundled.status !== 2 ? 'auto' :'pointer'}}
                                                                         href="javascript:;">
                                                                         {bundled.bundleFileName}
-                                                                        <Whether value={bundled.status === 4 || bundled.status ===5}>
+                                                                        <Whether value={bundled.status === 4 || bundled.status ===3}>
                                                                             <span style={{color:'red'}}>(task failed)</span>
+                                                                        </Whether>
+                                                                        <Whether value={bundled.status === 0 || bundled.status === 1}>
+                                                                            <span>  (task is working)</span>
                                                                         </Whether>
                                                                     </a>
                                                                 </dd>

@@ -264,7 +264,7 @@ app.prepare().then(() => {
             await client.close()
             throw err
         }
-        logger.info('> Ready on http://localhost:3000')
+        logger.info('> Ready on http://127.0.0.1:3000')
 
         const userCollection = db.collection('users')
         new BundleManager(userCollection)

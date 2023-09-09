@@ -40,9 +40,7 @@ const parseCacheStr = (str) => {
 export default function Home({recommend}) {
 
     const [code, setCode] = useState('')
-    const [settings, setSettings] = useImmer({
-        list: recommend
-    })
+    const [tasks,setTasks] = useState([])
 
     const [history, setHistory] = useImmer({
         list: [],
@@ -98,12 +96,7 @@ export default function Home({recommend}) {
 
         getStatus({}).then(res=>{
             const {files} = res
-            setSettings(draft => {
-                draft.list = [
-                    ...draft.list,
-                    ...files
-                ]
-            })
+            setTasks(files)
             modalRef.current.show()
         })
 
@@ -204,7 +197,13 @@ export default function Home({recommend}) {
 
                         >
                             <Settings
-                                list={settings.list}
+                                list={tasks.concat(recommend)}
+                                onRefresh={()=>{
+                                    getStatus({}).then(res=>{
+                                        const {files} = res
+                                        setTasks(files)
+                                    })
+                                }}
                             />
                         </CustomModal>,
                         document.body
