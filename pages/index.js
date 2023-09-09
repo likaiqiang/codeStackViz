@@ -37,10 +37,11 @@ const parseCacheStr = (str) => {
 }
 
 
-export default function Home({recommend}) {
+export default function Home(props) {
 
     const [code, setCode] = useState('')
     const [tasks,setTasks] = useState([])
+    const [recommend, setRecommend] = useState([])
 
     const [history, setHistory] = useImmer({
         list: [],
@@ -93,13 +94,19 @@ export default function Home({recommend}) {
     }
 
     useEffect(() => {
-
-        getStatus({}).then(res=>{
-            const {files} = res
-            setTasks(files)
+        let promise = Promise.all([
+            getRecommendBundles().then(res=>{
+                setRecommend(res.files)
+            }),
+            getStatus({}).then(res=>{
+                setTasks(res.files)
+            })
+        ]).then(()=>{
             modalRef.current.show()
         })
-
+        return ()=>{
+            promise = null
+        }
     }, []);
 
     useEffect(() => {
@@ -220,12 +227,4 @@ export default function Home({recommend}) {
     )
 }
 
-export async function getServerSideProps() {
-    const {files: recommend} = await getRecommendBundles()
-    return {
-        props: {
-            recommend
-        }
-    }
-}
 
