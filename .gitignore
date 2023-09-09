@@ -44,5 +44,4 @@ yarn.lock
 /dd.js
 
 /public/resources/
-/public/recommend/
 /.rollup.cache/
