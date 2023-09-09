@@ -1,6 +1,6 @@
 import path from "path";
 import fs from 'fs/promises'
-import {checkPathExists, getBundleFiles} from "@/pages/server_utils";
+import {checkPathExists, getBundleFiles} from "@/utils/server";
 
 const resourcesFolderPath = path.join(process.cwd(), 'public/recommend')
 

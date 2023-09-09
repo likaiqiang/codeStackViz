@@ -2,8 +2,8 @@ import {useEffect, useRef, useState} from "react";
 import {
     generateDotStr,
     getConfigByCode,
-} from "@/pages/cg";
-import {filterJsonByEntry, generateSplicedCode} from './cg/common'
+} from "cg";
+import {filterJsonByEntry, generateSplicedCode} from '@/cg/common'
 import Graphviz from "@/components/Graphviz";
 import CodeEditor from '@/components/Editor'
 import CustomPopper from "@/components/Popper";
@@ -12,7 +12,7 @@ import {useImmer} from "use-immer";
 import Chat from "@/components/Chat";
 import hotkeys from 'hotkeys-js';
 import 'bootstrap-icons/font/bootstrap-icons.min.css'
-import {useLocalStorage,renderMaxLevel as defaultRenderMaxLevel} from "@/pages/utils";
+import {useLocalStorage,renderMaxLevel as defaultRenderMaxLevel} from "@/utils/client";
 import Settings from "@/components/Settings";
 import {getBundle, getRecommendBundles, getStatus} from "@/api";
 import ReactDOM from "react-dom";

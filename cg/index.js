@@ -1,4 +1,4 @@
-import {getFuncVertexs} from "@/pages/cg/vertex";
+import {getFuncVertexs} from "@/cg/vertex";
 
 const {getAst} = require('./common')
 

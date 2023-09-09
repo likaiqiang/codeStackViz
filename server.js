@@ -1,4 +1,4 @@
-const serverUtils = require("./pages/server_utils.js");
+const serverUtils = require("./utils/server.js");
 
 const {rimraf} = require("rimraf");
 const simpleGit = require('simple-git');
@@ -11,7 +11,7 @@ const { createServer } = require('http')
 const { parse } = require('url')
 const next = require('next')
 const {logger} = require("./log/index.js");
-const {expireConfig} = require("./pages/server_utils");
+const {expireConfig} = require("./utils/server");
 
 const {checkPathExists, getRepoPath, resourcesFolderPath, TASKSTATUS} = serverUtils
 

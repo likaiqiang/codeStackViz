@@ -12,8 +12,8 @@ import {Autocomplete,Snackbar} from "@mui/material";
 import {useMemoizedFn} from "ahooks/lib";
 import {debounce} from 'lodash-es'
 import {getBundle, getStatus, submitTask} from "@/api";
-import {renderMaxLevel as defaultRenderMaxLevel, waitForPromise} from "@/pages/utils";
-import {getConfigByCode} from "@/pages/cg";
+import {renderMaxLevel as defaultRenderMaxLevel, waitForPromise} from "@/utils/client";
+import {getConfigByCode} from "cg";
 import SelectEntryModal from "@/components/SelectEntryModal";
 import ReactDOM from "react-dom";
 import PageContext from "@/context";

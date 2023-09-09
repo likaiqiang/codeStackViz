@@ -11,6 +11,7 @@ const nextConfig = {
         ignored: /public/
       }
     }
+    config.resolve.fallback = { fs: false };
     return config
   }
 }

@@ -3,9 +3,9 @@ import {selectAll,select} from "d3-selection";
 import {useEffect, useMemo, useRef, forwardRef, useImperativeHandle, useState} from "react";
 import ClipLoader from "react-spinners/ClipLoader";
 import Whether from "@/components/Whether";
-import {selectNodeConfig} from '@/pages/cg'
+import {selectNodeConfig} from 'cg'
 import DataFor from "@/components/DataFor";
-import {isVertexHasNext} from "@/pages/cg/common";
+import {isVertexHasNext} from "@/cg/common";
 
 let counter = 0;
 // eslint-disable-next-line no-plusplus
