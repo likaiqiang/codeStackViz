@@ -1,7 +1,7 @@
 const serverUtils = require("./pages/server_utils.js");
 
 const {rimraf} = require("rimraf");
-const Git = require("nodegit");
+const simpleGit = require('simple-git');
 const path = require("path");
 const rollup = require("./rollup.js");
 const fs = require("fs/promises");
@@ -101,7 +101,7 @@ class BundleManager {
         })
         await rimraf(repoPath)
         logger.info(`clone start ${repoPath}`)
-        await Git.Clone(`https://github.com/${owner}/${repo}.git` + (name ? ` -b ${name}` : ''), repoPath ).then(async ()=>{
+        await simpleGit().clone(`https://github.com/${owner}/${repo}.git` + (name ? ` -b ${name}` : ''), repoPath ).then(async ()=>{
             const gitDir = path.join(repoPath, '.git')
             logger.info(`clone done ${repoPath}`)
             await this.usersCollection.updateOne(

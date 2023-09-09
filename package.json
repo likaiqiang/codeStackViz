@@ -81,8 +81,8 @@
     "minimatch": "^9.0.3",
     "mongodb": "^6.0.0",
     "next-connect": "^1.0.0-next.4",
-    "nodegit": "^0.27.0",
     "rimraf": "^5.0.1",
+    "simple-git": "^3.19.1",
     "typescript": "^5.2.2"
   }
 }
