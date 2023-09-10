@@ -1,7 +1,8 @@
-const {parse} = require("@babel/parser");
-const generate = require('@babel/generator').default
+// import {parse} from '@babel/parser';
+import generate from '@babel/generator'
 export const getAst = ({code})=>{
-    return parse(code,{
+    window.codeInput = code
+    return window.babelparser.parse(code,{
         sourceType:'unambiguous'
     })
 }

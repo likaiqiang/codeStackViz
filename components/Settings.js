@@ -161,7 +161,8 @@ export default (props)=>{
                                                             return (
                                                                 <dd onClick={()=>{
                                                                     if(bundled.status !== 2) return
-                                                                    const {displayFunc} = getBatchConfigByCode({code: bundled.bundleFile})
+
+                                                                    const {displayFunc} = getBatchConfigByCode({code: atob(bundled.bundleFile)})
                                                                     let filtedDisplayFunc = displayFunc.filter(([vertex,dotJson])=>{
                                                                         return dotJson.maxLevel > defaultRenderMaxLevel
                                                                     })

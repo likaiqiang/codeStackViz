@@ -1,10 +1,9 @@
 import * as t from "@babel/types";
 import tern from "tern";
-import {parse} from "@babel/parser";
 import {filterJsonByEntry, generateNameByPath, getAst} from "@/cg/common";
-const generate = require('@babel/generator').default
+import generate from '@babel/generator'
 
-const {default: traverse} = require("@babel/traverse");
+import traverse from "@babel/traverse";
 
 const server = new tern.Server({});
 

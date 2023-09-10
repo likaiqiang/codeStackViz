@@ -33,7 +33,7 @@ const getBundleFiles = async (files,usersCollection)=>{
                         {
                             bundleFilePromise: fs.readFile(
                                 path.join(bundleDirPath, bundleFile),
-                                'utf-8'
+                                'base64'
                             ),
                             bundleFileName: subPath
                         }
