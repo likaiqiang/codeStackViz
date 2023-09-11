@@ -18,13 +18,7 @@ const model = new ChatOpenAI({
     modelName:'gpt-3.5-turbo-16k',
     openAIApiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY
 });
-const prompt =
-    PromptTemplate.fromTemplate(`The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.
-
-  Current conversation:
-  {chat_history}
-  Human: {input}
-  AI:`);
+const prompt = PromptTemplate.fromTemplate(`The following is a friendly conversation between a human and an AI. The AI is a helpful assistant that explains JavaScript code. Current conversation: {chat_history} Human: {input} AI:`);
 const chain = new LLMChain({ llm: model, prompt, memory });
 
 const Chat = (props,ref)=>{

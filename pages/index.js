@@ -79,7 +79,7 @@ export default function Home(props) {
         const {current: chat} = chatRef
         if (code) {
             chat.send(
-                "解释以下JavaScript代码: \n" +
+                "Please explain the following JavaScript code: \n" +
                 "\`\`\`javascript \n" +
                 code + '\n' +
                 "\`\`\`"
