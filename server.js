@@ -22,7 +22,7 @@ const handle = app.getRequestHandler()
 
 const promiseAllWithConcurrency = (task = [],option = {})=>{
     const ops = Object.assign({},option,{
-        limit: 4
+        limit: 2
     })
     const newTask = []
     for(let i=0;i<task.length;i+=ops.limit){
@@ -80,7 +80,7 @@ class BundleManager {
             if(task.status === TASKSTATUS.INIT){
                 return ()=>{
                     return this.cloneRepo(task).then(()=>{
-                        return this.generateBundle(task)
+                        return this.generateBundle(task) // 会执行两次，待调查,有点奇怪
                     })
                 }
             }
@@ -92,13 +92,9 @@ class BundleManager {
         })
         return promiseAllWithConcurrency(promiseTask)
     }
-    async cloneRepo({owner,repo,key,name ='',subPath='',id}){
-        const repoPath = getRepoPath({
-            owner,
-            repo,
-            name,
-            key
-        })
+    async cloneRepo(task){
+        const repoPath = getRepoPath(task)
+        const {owner,repo,name,id} = task
         await rimraf(repoPath)
         logger.info(`clone start ${repoPath}`)
         await simpleGit().clone(`https://github.com/${owner}/${repo}.git` + (name ? ` -b ${name}` : ''), repoPath ).then(async ()=>{
@@ -137,16 +133,13 @@ class BundleManager {
             path.join(repoPath,`./__bundle/${encodeURIComponent(subPath)}.js`)
         )
     }
-    async generateBundle({owner,repo,key,name ='',subPath = '',id}){
-        const repoPath = getRepoPath({
-            owner,
-            repo,
-            name,
-            key
-        })
+    async generateBundle(user){
+        const repoPath = getRepoPath(user)
+        const {owner,repo,key,name ='',subPath = '',id} = user
+
         return this.hasRepo({owner,repo,key,name}).then( async status=>{
             if(!status){
-                await this.cloneRepo({owner,repo,key,name,subPath})
+                await this.cloneRepo(user)
             }
 
             logger.info(`bundle start ${repoPath} ${subPath}`)
@@ -169,37 +162,6 @@ class BundleManager {
             })
         })
     }
-    // getBundle({owner,repo,key,name ='',subPath = ''}){
-    //     const repoPath = getRepoPath({
-    //         owner,
-    //         repo,
-    //         name,
-    //         key
-    //     })
-    //     return this.hasRepo({
-    //         owner,
-    //         repo,
-    //         key,
-    //         name
-    //     }).then(async status=>{
-    //         if(!status){
-    //             await this.cloneRepo({owner,repo,key,name,subPath})
-    //         }
-    //         return this.hasBundle({owner,repo,key,name,subPath}).then(async (status2)=>{
-    //             if(!status2){
-    //                 await this.generateBundle({owner,repo,key,name,subPath})
-    //             }
-    //
-    //             await this.usersCollection.updateOne(
-    //                 {owner,repo,key,name,subPath},
-    //                 { $set:{bundle_expire: Date.now() + expireConfig.timestamp, repo_expire: Date.now() + expireConfig.timestamp} }
-    //             )
-    //             return fs.readFile(
-    //                 path.join(repoPath,`./__bundle/${encodeURIComponent(subPath)}.js`)
-    //             )
-    //         })
-    //     })
-    // }
     async deleteExpiredResource(){
         const files = await fs.readdir(resourcesFolderPath)
         for(let file of files){

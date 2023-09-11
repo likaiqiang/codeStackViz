@@ -12,7 +12,7 @@ router.post(async (req,res)=>{
     if(await usersCollection.findOne({key,owner,repo,name,subPath})){
         return res.status(200).end()
     } // filter duplicate requests
-    await usersCollection.insertOne({key,owner,repo,name,subPath, status: TASKSTATUS.INIT})
+    await usersCollection.insertOne({key,owner,repo,name,subPath, status: TASKSTATUS.INIT, type:'resource'})
 
     return res.status(200).end()
 })
