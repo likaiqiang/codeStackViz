@@ -171,17 +171,24 @@ export default (props)=>{
                                                                             return dotJson.statements.length > defaultRenderMaxLevel
                                                                         })
                                                                     }
-
-                                                                    selectEntryModalRef.current.show()
-                                                                    setDisplayFunc(
-                                                                        filtedDisplayFunc.map(item=>{
-                                                                            const {id,name} = item[0]
-                                                                            return {
-                                                                                id,
-                                                                                name
-                                                                            }
+                                                                    if(filtedDisplayFunc.length > 0){
+                                                                        selectEntryModalRef.current.show()
+                                                                        setDisplayFunc(
+                                                                            filtedDisplayFunc.map(item=>{
+                                                                                const {id,name} = item[0]
+                                                                                return {
+                                                                                    id,
+                                                                                    name
+                                                                                }
+                                                                            })
+                                                                        )
+                                                                    }
+                                                                    else{
+                                                                        setToast(draft => {
+                                                                            draft.message = 'display function not found'
+                                                                            draft.isOpen = true
                                                                         })
-                                                                    )
+                                                                    }
 
                                                                 }}>
                                                                     <a

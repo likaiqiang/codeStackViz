@@ -7,34 +7,16 @@ import {filterJsonByEntry, generateSplicedCode} from '@/cg/common'
 import Graphviz from "@/components/Graphviz";
 import CodeEditor from '@/components/Editor'
 import CustomPopper from "@/components/Popper";
-import Whether from "@/components/Whether";
 import {useImmer} from "use-immer";
 import Chat from "@/components/Chat";
 import hotkeys from 'hotkeys-js';
 import 'bootstrap-icons/font/bootstrap-icons.min.css'
-import {useLocalStorage,renderMaxLevel as defaultRenderMaxLevel} from "@/utils/client";
+import {renderMaxLevel as defaultRenderMaxLevel} from "@/utils/client";
 import Settings from "@/components/Settings";
-import {getBundle, getRecommendBundles, getStatus} from "@/api";
+import {getRecommendBundles, getStatus} from "@/api";
 import ReactDOM from "react-dom";
 import PageContext from '@/context/index'
 import CustomModal from "@/components/CustomModal";
-
-const filename = 'babel-parser'
-
-const generateCache = ({owner, repo, key, name = '', subPath = '', entryFuncId}) => {
-    return `${key}@${encodeURIComponent(owner)}@${encodeURIComponent(repo)}` + (name ? `@${encodeURIComponent(name)}` : '') + (subPath ? `@${encodeURIComponent(subPath)}` : '') + `@${entryFuncId}`
-}
-
-const parseCacheStr = (str) => {
-    const [owner, repo, name, subPath, entryFuncId] = str.split('@').map(s => decodeURIComponent(s))
-    return {
-        owner,
-        repo,
-        name: name || '',
-        subPath,
-        entryFuncId
-    }
-}
 
 
 export default function Home(props) {

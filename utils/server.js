@@ -18,43 +18,38 @@ async function checkPathExists(path) {
     }
 }
 
-const getBundleFiles = async (files,usersCollection)=>{
-    const bundleTasks = {}
-    for (let file of files) {
-        const stat = await fs.stat(path.join(file))
-        if (stat.isDirectory() && await checkPathExists(path.join(file, '__bundle'))) {
-            const bundleDirPath = path.join(file, '__bundle')
-            const bundleFiles = await fs.readdir(bundleDirPath)
-            for (let bundleFile of bundleFiles) {
-                if ((await fs.stat(path.join(bundleDirPath, bundleFile))).isFile()) {
-                    const repoPathStr = path.parse(path.join(bundleDirPath, '..')).name
-                    const subPath = decodeURIComponent(path.parse(bundleFile).name)
-                    bundleTasks[repoPathStr] = (bundleTasks[repoPathStr] || []).concat(
-                        {
-                            bundleFilePromise: fs.readFile(
-                                path.join(bundleDirPath, bundleFile),
-                                'base64'
-                            ),
-                            bundleFileName: subPath
-                        }
+const getFilesByUsers = async (files, usersCollection)=>{
+
+    const taskObj = files.reduce((acc,user)=>{
+        const repoPath = getRepoPath(user)
+
+        acc[repoPath] = (acc[repoPath] || []).concat(
+            {
+                bundleFilePromise: user.status === TASKSTATUS.BUNDLED ? (
+                    fs.readFile(
+                        path.join(
+                            repoPath,'__bundle',encodeURIComponent(user.subPath) + '.js'
+                        ),
+                        'base64'
                     )
-                }
+                ) : null,
+                bundleFileName: user.subPath,
+                status: user.status
             }
-        }
-    }
-
+        )
+        return acc
+    },{})
     return await Promise.all(
-        Object.entries(bundleTasks).map(async ([repoPathStr, bundled]) => {
+        Object.entries(taskObj).map(async ([repoPathStr, bundled]) => {
             const [key,owner, repo, name = ''] = repoPathStr.split('@')
-
             return [{
                 key,
                 owner,
                 repo,
                 name
             }, await Promise.all(
-                bundled.map(async ({bundleFileName, bundleFilePromise}) => {
-                    const bundleFile = await bundleFilePromise
+                bundled.map(async ({bundleFileName, bundleFilePromise,status}) => {
+                    const bundleFile = status === TASKSTATUS.BUNDLED ? await bundleFilePromise : null
                     if(key !== 1 && usersCollection){
                         await usersCollection.updateOne(
                             {key,owner,repo,name,subPath: bundleFileName},
@@ -64,17 +59,20 @@ const getBundleFiles = async (files,usersCollection)=>{
                     return {
                         bundleFileName,
                         bundleFile,
-                        status: TASKSTATUS.BUNDLED
+                        status
                     }
                 })
             )]
         })
     )
 }
-const resourcesFolderPath = path.join(process.cwd(),'public/resources')
 
-const getRepoPath = ({owner,repo,key,name =''})=>{
-    return path.join(resourcesFolderPath,`${key}@${encodeURIComponent(owner)}@${encodeURIComponent(repo)}` + (name ? `@${encodeURIComponent(name)}` : ''))
+const resourcesFolderPath = path.join(process.cwd(),'public/resources')
+const recommendFolderPath = path.join(process.cwd(), 'public/recommend')
+
+const getRepoPath = ({owner,repo,key,name ='',type})=>{
+    const folderPath = type === 'resource' ? resourcesFolderPath : recommendFolderPath
+    return path.join(folderPath,`${key}@${encodeURIComponent(owner)}@${encodeURIComponent(repo)}` + (!!name ? `@${encodeURIComponent(name)}` : ''))
 }
 
 const expireConfig = {
@@ -84,7 +82,8 @@ const expireConfig = {
 module.exports = {
     getRepoPath,
     resourcesFolderPath,
-    getBundleFiles,
+    recommendFolderPath,
+    getFilesByUsers,
     checkPathExists,
     TASKSTATUS,
     expireConfig

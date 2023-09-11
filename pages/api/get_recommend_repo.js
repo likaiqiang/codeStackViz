@@ -1,19 +1,21 @@
-import path from "path";
-import fs from 'fs/promises'
-import {checkPathExists, getBundleFiles} from "@/utils/server";
+import {router} from '@/database.js'
 
-const resourcesFolderPath = path.join(process.cwd(), 'public/recommend')
+import {getFilesByUsers} from "@/utils/server";
 
-export default async function handler(req, res) {
-    if (req.method.toUpperCase() !== 'GET') {
-        return res.status(405).json({error: 'Method not allowed'});
-    }
 
-    const files = (await fs.readdir(resourcesFolderPath)).map(file=>{
-        return path.join(resourcesFolderPath,file)
-    })
-
+router.get(async (req,res)=>{
+    const usersCollection = req.db.collection('users')
+    const recommends = await usersCollection.find({type:'recommend'}).toArray()
+    const files = await getFilesByUsers(recommends, usersCollection)
     return res.status(200).json({
-        files: await getBundleFiles(files)
+        files
     })
-}
+})
+
+export default router.handler({
+    onError: (err, req, res) => {
+        console.error(err.stack);
+        res.status(err.statusCode || 500).end(err.message);
+    }
+})
+

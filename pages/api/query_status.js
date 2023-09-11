@@ -1,52 +1,34 @@
-import {getBundleFiles, getRepoPath, resourcesFolderPath, TASKSTATUS} from "@/utils/server";
+import {getFilesByUsers, TASKSTATUS} from "@/utils/server";
 import {router} from '@/database.js'
-import fs from "fs/promises";
-import path from "path";
-
 router.get(async (req,res)=>{
     const usersCollection = req.db.collection('users')
 
     const {headers} = req
     const {authorization: key} = headers
-    const users = await usersCollection.find(
-        {key}
+
+    const errorTask = await usersCollection.find(
+        {key,type:'resource',status:{$in:[TASKSTATUS.BUNDLEDERROR, TASKSTATUS.REPOCLONEDENDERROR]}}
     ).toArray()
-    const bundledDir = users.filter(user=> user.status === TASKSTATUS.BUNDLED).map(user=>{
-        const {owner,repo,name} = user
-        return getRepoPath({owner,repo,key,name})
-    })
-
-    const interruptedListObj = users.filter(user=> user.status !== TASKSTATUS.BUNDLED).reduce((acc,user)=>{
-        const repoPathStr = getRepoPath(user)
-        acc[repoPathStr] = (acc[repoPathStr] || []).concat(
-            {
-                bundleFilePromise: null,
-                bundleFileName: user.subPath,
-                user
+    await Promise.all(
+        errorTask.map(task=>{
+            if(task.status === TASKSTATUS.REPOCLONEDENDERROR){
+                return usersCollection.updateOne({id: task.id},{$set:{status: TASKSTATUS.INIT}})
             }
-        )
-        return acc
-    },{})
-    const interruptedList = Object.entries(interruptedListObj).map(([repoPathStr, bundled])=>{
-        const {user} = bundled[0]
-        return [
-            {
-                key: user.key,
-                owner: user.owner,
-                repo: user.repo,
-                name: user.name,
-            },
-            bundled.map(bun=>{
-                return {bundleFileName: bun.bundleFileName, bundleFile: null, status: bun.user.status}
-            })
-        ]
-    })
+            if(task.status === TASKSTATUS.BUNDLEDERROR){
+                return usersCollection.updateOne({id: task.id},{$set: {status: TASKSTATUS.REPOCLONEDEND}})
+            }
+        })
+    )
 
+    const users = await usersCollection.find(
+        {key,type:'resource'}
+    ).toArray()
 
-    const bundledFiles = await getBundleFiles(bundledDir,usersCollection)
+    const files = await getFilesByUsers(users,usersCollection)
+
     // await req.dbClient.close()
     return res.status(200).json({
-        files: bundledFiles.concat(interruptedList)
+        files
     })
 })
 

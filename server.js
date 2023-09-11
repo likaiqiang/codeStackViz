@@ -92,7 +92,7 @@ class BundleManager {
         })
         return promiseAllWithConcurrency(promiseTask)
     }
-    async cloneRepo({owner,repo,key,name ='',subPath=''}){
+    async cloneRepo({owner,repo,key,name ='',subPath='',id}){
         const repoPath = getRepoPath({
             owner,
             repo,
@@ -105,14 +105,14 @@ class BundleManager {
             const gitDir = path.join(repoPath, '.git')
             logger.info(`clone done ${repoPath}`)
             await this.usersCollection.updateOne(
-                {owner,repo,name,key,subPath},
+                {id},
                 { $set: {status: TASKSTATUS.REPOCLONEDEND} }
             )
             await rimraf(gitDir)
         }).catch(async e=>{
             logger.error(`clone error ${repoPath}`,e)
             await this.usersCollection.updateOne(
-                {owner,repo,name,key,subPath},
+                {id},
                 { $set: {status: TASKSTATUS.REPOCLONEDENDERROR} }
             )
         })
@@ -137,7 +137,7 @@ class BundleManager {
             path.join(repoPath,`./__bundle/${encodeURIComponent(subPath)}.js`)
         )
     }
-    async generateBundle({owner,repo,key,name ='',subPath = ''}){
+    async generateBundle({owner,repo,key,name ='',subPath = '',id}){
         const repoPath = getRepoPath({
             owner,
             repo,
@@ -157,13 +157,13 @@ class BundleManager {
             }).then(async ()=>{
                 logger.info(`bundle done ${repoPath} ${subPath}`)
                 await this.usersCollection.updateOne(
-                    {owner,repo,name,key,subPath},
+                    {id},
                     { $set: {status: TASKSTATUS.BUNDLED, bundle_expire: Date.now() + expireConfig.timestamp} }
                 )
             }).catch(async e=>{
                 logger.error(`bundle error ${repoPath} ${subPath}`,e)
                 await this.usersCollection.updateOne(
-                    {owner,repo,name,key,subPath},
+                    {id},
                     { $set: {status: TASKSTATUS.BUNDLEDERROR, bundle_expire: Date.now() + expireConfig.timestamp} }
                 )
             })
