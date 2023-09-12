@@ -11,7 +11,9 @@ const { createServer } = require('http')
 const { parse } = require('url')
 const next = require('next')
 const {logger} = require("./log/index.js");
-const {expireConfig} = require("./utils/server");
+const {expireConfig,findFileUpwards} = require("./utils/server");
+const babel = require("@babel/core");
+const {babel: babelPlugins} = require('./plugins')
 
 const {checkPathExists, getRepoPath, resourcesFolderPath, TASKSTATUS} = serverUtils
 
@@ -22,7 +24,7 @@ const handle = app.getRequestHandler()
 
 const promiseAllWithConcurrency = (task = [],option = {})=>{
     const ops = Object.assign({},option,{
-        limit: 2
+        limit: 3
     })
     const newTask = []
     for(let i=0;i<task.length;i+=ops.limit){
@@ -41,7 +43,7 @@ const promiseAllWithConcurrency = (task = [],option = {})=>{
     },Promise.resolve())
 }
 
-const delay = (timer= 300000)=>{
+const delay = (timer= 60000)=>{
     return new Promise((resolve,reject)=>{
         try{
             setTimeout(resolve,timer)
@@ -75,7 +77,7 @@ class BundleManager {
         // this.checkTask()
     }
     async checkTask(){
-        const interruptedTask = await (this.usersCollection.find({status: { $in: [TASKSTATUS.INIT, TASKSTATUS.REPOCLONEDEND] }})).toArray()
+        const interruptedTask = await (this.usersCollection.find({type:'resource',status: { $in: [TASKSTATUS.INIT, TASKSTATUS.REPOCLONEDEND] }})).toArray()
         const promiseTask = interruptedTask.map(task=>{
             if(task.status === TASKSTATUS.INIT){
                 return ()=>{
@@ -86,7 +88,7 @@ class BundleManager {
             }
             if(task.status === TASKSTATUS.REPOCLONEDEND){
                 return ()=>{
-                    return this.generateBundle(task)
+                    return this.generateBundle(task) // 会执行两次，待调查,有点奇怪
                 }
             }
         })
@@ -94,21 +96,50 @@ class BundleManager {
     }
     async cloneRepo(task){
         const repoPath = getRepoPath(task)
-        const {owner,repo,name,id} = task
-        await rimraf(repoPath)
+        const {owner,repo,name,_id} = task
+
+        const isCloningTask = await this.usersCollection.find({
+            owner: task.owner,
+            repo: task.repo,
+            name: task.name,
+            key: task.key,
+            type: task.type,
+            status: TASKSTATUS.REPOSTARTCLONE
+        }).toArray()
+
+        if(isCloningTask.length) return Promise.reject() // 避免同一目录重复clone
+
+
         logger.info(`clone start ${repoPath}`)
+        await this.usersCollection.updateOne({_id: task._id},{$set:{status: TASKSTATUS.REPOSTARTCLONE}})
+        const clonedTask = await this.usersCollection.find({
+            owner: task.owner,
+            repo: task.repo,
+            name: task.name,
+            type: task.type,
+            key: task.key,
+            status: TASKSTATUS.REPOCLONEDEND
+        }).toArray()
+        if(clonedTask.length){
+            logger.info(`clone done ${repoPath}`)
+            return this.usersCollection.updateOne(
+                {_id},
+                { $set: {status: TASKSTATUS.REPOCLONEDEND} }
+            )
+        }
+        await rimraf(repoPath)
         await simpleGit().clone(`https://github.com/${owner}/${repo}.git` + (name ? ` -b ${name}` : ''), repoPath ).then(async ()=>{
             const gitDir = path.join(repoPath, '.git')
             logger.info(`clone done ${repoPath}`)
             await this.usersCollection.updateOne(
-                {id},
+                {_id},
                 { $set: {status: TASKSTATUS.REPOCLONEDEND} }
             )
             await rimraf(gitDir)
         }).catch(async e=>{
             logger.error(`clone error ${repoPath}`,e)
             await this.usersCollection.updateOne(
-                {id},
+                {_id},
                 { $set: {status: TASKSTATUS.REPOCLONEDENDERROR} }
             )
         })
@@ -135,31 +166,38 @@ class BundleManager {
     }
     async generateBundle(user){
         const repoPath = getRepoPath(user)
-        const {owner,repo,key,name ='',subPath = '',id} = user
+        const {subPath, _id} = user
 
-        return this.hasRepo({owner,repo,key,name}).then( async status=>{
-            if(!status){
-                await this.cloneRepo(user)
-            }
+        const isCloningTask = await this.usersCollection.find({
+            owner: user.owner,
+            repo: user.repo,
+            name: user.name,
+            key: user.key,
+            type: user.type,
+            status: TASKSTATUS.BUNDLESTART
+        }).toArray()
 
-            logger.info(`bundle start ${repoPath} ${subPath}`)
-            return rollup({
-                entry: path.join(repoPath,subPath),
-                output: path.join(repoPath,`./__bundle/${encodeURIComponent(subPath)}.js`),
-                repoPath
-            }).then(async ()=>{
-                logger.info(`bundle done ${repoPath} ${subPath}`)
-                await this.usersCollection.updateOne(
-                    {id},
-                    { $set: {status: TASKSTATUS.BUNDLED, bundle_expire: Date.now() + expireConfig.timestamp} }
-                )
-            }).catch(async e=>{
-                logger.error(`bundle error ${repoPath} ${subPath}`,e)
-                await this.usersCollection.updateOne(
-                    {id},
-                    { $set: {status: TASKSTATUS.BUNDLEDERROR, bundle_expire: Date.now() + expireConfig.timestamp} }
-                )
-            })
+        if(isCloningTask.length) return Promise.reject() //
+
+        logger.info(`bundle start ${repoPath} ${subPath}`)
+        await this.usersCollection.updateOne({_id: user._id},{$set:{status: TASKSTATUS.BUNDLESTART}})
+
+        return rollup({
+            entry: path.join(repoPath, subPath),
+            output: path.join(repoPath,'__bundle',`${encodeURIComponent(subPath)}.js`),
+            repoPath
+        }).then(async ()=>{
+            logger.info(`bundle done ${repoPath} ${subPath}`)
+            await this.usersCollection.updateOne(
+                {_id},
+                { $set: {status: TASKSTATUS.BUNDLED, bundle_expire: Date.now() + expireConfig.timestamp} }
+            )
+        }).catch(async e=>{
+            logger.error(`bundle error ${repoPath} ${subPath}`,e)
+            await this.usersCollection.updateOne(
+                {_id},
+                { $set: {status: TASKSTATUS.BUNDLEDERROR, bundle_expire: Date.now() + expireConfig.timestamp} }
+            )
         })
     }
     async deleteExpiredResource(){

@@ -42,6 +42,13 @@ export default function Home(props) {
         })
     }
 
+    const clear = ()=>{
+        setHistory(draft => {
+            draft.index = -1
+            draft.list = []
+        })
+    }
+
     const back = () => {
         const id = history.list[history.index - 1]
         setHistory(draft => {
@@ -81,6 +88,7 @@ export default function Home(props) {
                 setRecommend(res.files)
             }),
             getStatus({}).then(res=>{
+                console.log('res.files',res.files);
                 setTasks(res.files)
             })
         ]).then(()=>{
@@ -134,7 +142,8 @@ export default function Home(props) {
             <PageContext.Provider value={{
                 renderFiltedSvg,
                 getBatchConfigByCode,
-                push
+                push,
+                clear
             }}>
                 <Graphviz
                     className={'codeSvg'}
@@ -186,7 +195,7 @@ export default function Home(props) {
 
                         >
                             <Settings
-                                list={tasks.concat(recommend)}
+                                list={recommend.concat(tasks)}
                                 onRefresh={()=>{
                                     getStatus({}).then(res=>{
                                         const {files} = res

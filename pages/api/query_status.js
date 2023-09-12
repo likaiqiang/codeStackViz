@@ -12,10 +12,10 @@ router.get(async (req,res)=>{
     await Promise.all(
         errorTask.map(task=>{
             if(task.status === TASKSTATUS.REPOCLONEDENDERROR){
-                return usersCollection.updateOne({id: task.id},{$set:{status: TASKSTATUS.INIT}})
+                return usersCollection.updateOne({_id: task._id},{$set:{status: TASKSTATUS.INIT}})
             }
             if(task.status === TASKSTATUS.BUNDLEDERROR){
-                return usersCollection.updateOne({id: task.id},{$set: {status: TASKSTATUS.REPOCLONEDEND}})
+                return usersCollection.updateOne({_id: task._id},{$set: {status: TASKSTATUS.REPOCLONEDEND}})
             }
         })
     )
@@ -26,6 +26,7 @@ router.get(async (req,res)=>{
 
     const files = await getFilesByUsers(users,usersCollection)
 
+    res.setHeader('Cache-Control', 'no-store');
     // await req.dbClient.close()
     return res.status(200).json({
         files

@@ -7,6 +7,7 @@ router.get(async (req,res)=>{
     const usersCollection = req.db.collection('users')
     const recommends = await usersCollection.find({type:'recommend'}).toArray()
     const files = await getFilesByUsers(recommends, usersCollection)
+    res.setHeader('Cache-Control', 'no-store');
     return res.status(200).json({
         files
     })
