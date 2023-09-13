@@ -4,16 +4,25 @@ const {rimraf} = require("rimraf");
 const simpleGit = require('simple-git');
 const path = require("path");
 const rollup = require("./rollup.js");
-const fs = require("fs/promises");
+const fs = require("fs");
 const {db,client} = require("./database.js");
 
 const { createServer } = require('http')
 const { parse } = require('url')
+const {parse: parseEnv} = require('envfile')
 const next = require('next')
 const {logger} = require("./log/index.js");
 const {expireConfig,findFileUpwards} = require("./utils/server");
-const {hostname, port} = require('./config')
 const {checkPathExists, getRepoPath, TASKSTATUS} = serverUtils
+
+const {NEXT_PUBLIC_URL} = parseEnv(
+    fs.readFileSync(
+        path.join(process.cwd(),'.env'),
+        'utf-8'
+    )
+)
+
+const {hostname,port} = new URL(NEXT_PUBLIC_URL)
 
 const dev = process.env.NODE_ENV !== 'production'
 const app = next({ dev, hostname, port })

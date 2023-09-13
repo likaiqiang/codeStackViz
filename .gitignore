@@ -43,9 +43,8 @@ yarn.lock
 /dd/dd.js
 /dd.js
 
-/public/resources2/
-/public/resources/
+
 /.rollup.cache/
-/public/recommend/
-/resources/
-config.js
+.env.development
+.env.production
+upload.js

@@ -6,8 +6,8 @@ export default function Document() {
         <Head>
             <script type='module' dangerouslySetInnerHTML={{ __html:
                     `
-                        import babelparser from 'https://cdn.jsdelivr.net/npm/@babel/parser@7.22.16/+esm';
-                        window.babelparser = babelparser;
+                        import babelParser from 'https://cdn.jsdelivr.net/npm/@babel/parser@7.22.16/+esm';
+                        window.babelParser = babelParser;
                     `
             }} />
         </Head>

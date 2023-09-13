@@ -1,8 +1,7 @@
 // import {parse} from '@babel/parser';
 import generate from '@babel/generator'
 export const getAst = ({code})=>{
-    window.codeInput = code
-    return window.babelparser.parse(code,{
+    return window.babelParser.parse(code,{
         sourceType:'unambiguous'
     })
 }
