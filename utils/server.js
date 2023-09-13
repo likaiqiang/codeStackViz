@@ -73,11 +73,11 @@ const getFilesByUsers = async (files, usersCollection)=>{
     )
 }
 
-const resourcesFolderPath = path.join(process.cwd(),'public/resources')
-const recommendFolderPath = path.join(process.cwd(), 'public/recommend')
 
 const getRepoPath = ({owner,repo,key,name ='',type})=>{
-    const folderPath = type === 'resource' ? resourcesFolderPath : recommendFolderPath
+    const resourcespath = process.env.RESOURCES_PATH
+
+    const folderPath = type === 'resource' ? path.join(resourcespath,'resources') : path.join(resourcespath,'recommend')
     return path.join(folderPath,`${key}@${encodeURIComponent(owner)}@${encodeURIComponent(repo)}` + (!!name ? `@${encodeURIComponent(name)}` : ''))
 }
 
@@ -101,8 +101,6 @@ const expireConfig = {
 
 module.exports = {
     getRepoPath,
-    resourcesFolderPath,
-    recommendFolderPath,
     getFilesByUsers,
     checkPathExists,
     TASKSTATUS,

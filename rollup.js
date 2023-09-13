@@ -79,13 +79,13 @@ const rollupBuild = ({entry,output,repoPath})=>{
 }
 
 
-const testEntry = 'D:\\pro\\js-code-view\\public\\resources\\ebdc240705d664a08f73feb098b98ecb@vuejs@vue\\src\\compiler\\index.ts'
-const testOp = 'D:\\pro\\js-code-view\\public\\resources\\ebdc240705d664a08f73feb098b98ecb@vuejs@vue\\__bundle\\src%2Fcompiler%2Findex.ts.js'
-const repoPath = "D:\\pro\\js-code-view\\public\\resources\\ebdc240705d664a08f73feb098b98ecb@vuejs@vue"
-rollupBuild({
-    entry: testEntry,
-    output: testOp,
-    repoPath
-})
+// const testEntry = 'D:\\pro\\js-code-view\\public\\resources\\ebdc240705d664a08f73feb098b98ecb@vuejs@vue\\src\\compiler\\index.ts'
+// const testOp = 'D:\\pro\\js-code-view\\public\\resources\\ebdc240705d664a08f73feb098b98ecb@vuejs@vue\\__bundle\\src%2Fcompiler%2Findex.ts.js'
+// const repoPath = "D:\\pro\\js-code-view\\public\\resources\\ebdc240705d664a08f73feb098b98ecb@vuejs@vue"
+// rollupBuild({
+//     entry: testEntry,
+//     output: testOp,
+//     repoPath
+// })
 
 module.exports = rollupBuild

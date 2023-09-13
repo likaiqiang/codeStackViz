@@ -189,8 +189,8 @@ export default (props)=>{
 
                                                                 }}>
                                                                     <a
-                                                                        style={{opacity: bundled.status !== 2 ? '0.4': 1, cursor: bundled.status !== 2 ? 'auto' :'pointer'}}
-                                                                        href="javascript:;">
+                                                                        onClick={e=>e.preventDefault()}
+                                                                        style={{opacity: bundled.status !== 2 ? '0.4': 1, cursor: bundled.status !== 2 ? 'auto' :'pointer'}}>
                                                                         {bundled.bundleFileName}
                                                                         <Whether value={bundled.status === 4 || bundled.status ===3}>
                                                                             <span style={{color:'red'}}>(task failed)</span>

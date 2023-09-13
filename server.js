@@ -15,7 +15,7 @@ const {expireConfig,findFileUpwards} = require("./utils/server");
 const babel = require("@babel/core");
 const {babel: babelPlugins} = require('./plugins')
 
-const {checkPathExists, getRepoPath, resourcesFolderPath, TASKSTATUS} = serverUtils
+const {checkPathExists, getRepoPath, TASKSTATUS} = serverUtils
 
 const dev = process.env.NODE_ENV !== 'production'
 const app = next({ dev })
@@ -199,55 +199,6 @@ class BundleManager {
                 { $set: {status: TASKSTATUS.BUNDLEDERROR, bundle_expire: Date.now() + expireConfig.timestamp} }
             )
         })
-    }
-    async deleteExpiredResource(){
-        const files = await fs.readdir(resourcesFolderPath)
-        for(let file of files){
-            const fullPath = path.join(resourcesFolderPath, file)
-            const stat = await fs.lstat(fullPath);
-            if(stat.isDirectory()){
-                const [key,owner,repo,name=''] = file.split('@')
-                const repos_expire = await this.usersCollection.find(
-                    {key,owner,repo,name},
-                    {repo_expire: 1}
-                )
-                const repo_expire = Math.max(...repos_expire)
-                if(Date.now() > repo_expire) {
-                    await rimraf(fullPath)
-                    await this.usersCollection.deleteMany({
-                        key,
-                        owner,
-                        repo,
-                        name
-                    })
-                }
-                else{
-                    const bundlePath = path.join(fullPath,'__bundle')
-                    if( await checkPathExists(bundlePath)){
-                        const bundleFiles = await fs.readdir(bundlePath)
-                        for(let bundle of bundleFiles){
-                            const bundleFullPath = path.join(fullPath,'__bundle',bundle)
-
-                            const bundle_expire = await this.usersCollection.findOne(
-                                {key,owner,repo,name,subPath: decodeURIComponent(bundle)},
-                                {bundle_expire: 1}
-                            )
-                            if(Date.now() > bundle_expire){
-                                await this.usersCollection.deleteMany({
-                                    key,
-                                    owner,
-                                    repo,
-                                    name,
-                                    subPath: decodeURIComponent(bundle)
-                                })
-                                await rimraf(bundleFullPath)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
     }
 }
 
