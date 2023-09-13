@@ -1,5 +1,7 @@
 import {TASKSTATUS} from "@/utils/server";
-import {router} from '@/database.js'
+import {createRouter, database} from '@/database.js'
+
+const router = createRouter().use(database)
 
 router.post(async (req,res)=>{
     const {body,headers} = req
