@@ -10,10 +10,9 @@ async function database(req, res, next) {
     return next();
 }
 
-const router = createRouter();
-
 module.exports = {
-    router: router.use(database),
+    createRouter,
+    database,
     client,
     db
 }

@@ -7,7 +7,7 @@ import Whether from "@/components/Whether";
 const SelectEntryModal = (props,ref)=>{
     const {list = [],updateList=()=>{}} = props
     const [searchText, setSearchText] = useState('');
-    const {renderFiltedSvg,push} = useContext(PageContext)
+    const {renderFiltedSvg,push, clear} = useContext(PageContext)
     const modalRef = useRef()
 
     useImperativeHandle(ref,()=>{
@@ -33,6 +33,7 @@ const SelectEntryModal = (props,ref)=>{
                                 entryFuncId: item.id
                             }).then(()=>{
                                 modalManager.closeAllModals()
+                                clear()
                                 push(item.id)
                             })
                         }}>

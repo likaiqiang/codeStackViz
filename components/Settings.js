@@ -114,9 +114,6 @@ export default (props)=>{
     const [displayFunc,setDisplayFunc] = useState([])
     const {getBatchConfigByCode} = useContext(PageContext)
 
-    useEffect(()=>{
-        onRefresh()
-    },[])
 
     return (
         <>
@@ -153,7 +150,7 @@ export default (props)=>{
                                         return (
                                             <>
                                                 <dt style={{opacity: item[1].filter(bun=>bun.status !== 2).length === item[1].length ? '0.4' : 1}}>
-                                                    {`${item[0].owner}/${item[0].repo}`}
+                                                    {`${item[0].owner}/${item[0].repo}` + (item[0].key === '1' ? '(system)' : '')}
                                                 </dt>
                                                 <DataFor list={item[1]}>
                                                     {
@@ -192,8 +189,8 @@ export default (props)=>{
 
                                                                 }}>
                                                                     <a
-                                                                        style={{opacity: bundled.status !== 2 ? '0.4': 1, cursor: bundled.status !== 2 ? 'auto' :'pointer'}}
-                                                                        href="javascript:;">
+                                                                        onClick={e=>e.preventDefault()}
+                                                                        style={{opacity: bundled.status !== 2 ? '0.4': 1, cursor: bundled.status !== 2 ? 'auto' :'pointer'}}>
                                                                         {bundled.bundleFileName}
                                                                         <Whether value={bundled.status === 4 || bundled.status ===3}>
                                                                             <span style={{color:'red'}}>(task failed)</span>

@@ -4,25 +4,34 @@ const {rimraf} = require("rimraf");
 const simpleGit = require('simple-git');
 const path = require("path");
 const rollup = require("./rollup.js");
-const fs = require("fs/promises");
+const fs = require("fs");
 const {db,client} = require("./database.js");
 
 const { createServer } = require('http')
 const { parse } = require('url')
+const {parse: parseEnv} = require('envfile')
 const next = require('next')
 const {logger} = require("./log/index.js");
-const {expireConfig} = require("./utils/server");
+const {expireConfig,findFileUpwards} = require("./utils/server");
+const {checkPathExists, getRepoPath, TASKSTATUS} = serverUtils
 
-const {checkPathExists, getRepoPath, resourcesFolderPath, TASKSTATUS} = serverUtils
+const {NEXT_PUBLIC_URL} = parseEnv(
+    fs.readFileSync(
+        path.join(process.cwd(),'.env'),
+        'utf-8'
+    )
+)
+
+const {hostname,port} = new URL(NEXT_PUBLIC_URL)
 
 const dev = process.env.NODE_ENV !== 'production'
-const app = next({ dev })
+const app = next({ dev, hostname, port })
 const handle = app.getRequestHandler()
 
 
 const promiseAllWithConcurrency = (task = [],option = {})=>{
     const ops = Object.assign({},option,{
-        limit: 4
+        limit: 3
     })
     const newTask = []
     for(let i=0;i<task.length;i+=ops.limit){
@@ -41,7 +50,7 @@ const promiseAllWithConcurrency = (task = [],option = {})=>{
     },Promise.resolve())
 }
 
-const delay = (timer= 300000)=>{
+const delay = (timer= 60000)=>{
     return new Promise((resolve,reject)=>{
         try{
             setTimeout(resolve,timer)
@@ -75,44 +84,69 @@ class BundleManager {
         // this.checkTask()
     }
     async checkTask(){
-        const interruptedTask = await (this.usersCollection.find({status: { $in: [TASKSTATUS.INIT, TASKSTATUS.REPOCLONEDEND] }})).toArray()
+        const interruptedTask = await (this.usersCollection.find({type:'resource',status: { $in: [TASKSTATUS.INIT, TASKSTATUS.REPOCLONEDEND] }})).toArray()
         const promiseTask = interruptedTask.map(task=>{
             if(task.status === TASKSTATUS.INIT){
                 return ()=>{
                     return this.cloneRepo(task).then(()=>{
-                        return this.generateBundle(task)
+                        return this.generateBundle(task) // 会执行两次，待调查,有点奇怪
                     })
                 }
             }
             if(task.status === TASKSTATUS.REPOCLONEDEND){
                 return ()=>{
-                    return this.generateBundle(task)
+                    return this.generateBundle(task) // 会执行两次，待调查,有点奇怪
                 }
             }
         })
         return promiseAllWithConcurrency(promiseTask)
     }
-    async cloneRepo({owner,repo,key,name ='',subPath='',id}){
-        const repoPath = getRepoPath({
-            owner,
-            repo,
-            name,
-            key
-        })
-        await rimraf(repoPath)
+    async cloneRepo(task){
+        const repoPath = getRepoPath(task)
+        const {owner,repo,name,_id} = task
+
+        const isCloningTask = await this.usersCollection.find({
+            owner: task.owner,
+            repo: task.repo,
+            name: task.name,
+            key: task.key,
+            type: task.type,
+            status: TASKSTATUS.REPOSTARTCLONE
+        }).toArray()
+
+        if(isCloningTask.length) return Promise.reject() // 避免同一目录重复clone
+
+
         logger.info(`clone start ${repoPath}`)
+        await this.usersCollection.updateOne({_id: task._id},{$set:{status: TASKSTATUS.REPOSTARTCLONE}})
+        const clonedTask = await this.usersCollection.find({
+            owner: task.owner,
+            repo: task.repo,
+            name: task.name,
+            type: task.type,
+            key: task.key,
+            status: TASKSTATUS.REPOCLONEDEND
+        }).toArray()
+        if(clonedTask.length){
+            logger.info(`clone done ${repoPath}`)
+            return this.usersCollection.updateOne(
+                {_id},
+                { $set: {status: TASKSTATUS.REPOCLONEDEND} }
+            )
+        }
+        await rimraf(repoPath)
         await simpleGit().clone(`https://github.com/${owner}/${repo}.git` + (name ? ` -b ${name}` : ''), repoPath ).then(async ()=>{
             const gitDir = path.join(repoPath, '.git')
             logger.info(`clone done ${repoPath}`)
             await this.usersCollection.updateOne(
-                {id},
+                {_id},
                 { $set: {status: TASKSTATUS.REPOCLONEDEND} }
             )
             await rimraf(gitDir)
         }).catch(async e=>{
             logger.error(`clone error ${repoPath}`,e)
             await this.usersCollection.updateOne(
-                {id},
+                {_id},
                 { $set: {status: TASKSTATUS.REPOCLONEDENDERROR} }
             )
         })
@@ -137,117 +171,41 @@ class BundleManager {
             path.join(repoPath,`./__bundle/${encodeURIComponent(subPath)}.js`)
         )
     }
-    async generateBundle({owner,repo,key,name ='',subPath = '',id}){
-        const repoPath = getRepoPath({
-            owner,
-            repo,
-            name,
-            key
+    async generateBundle(user){
+        const repoPath = getRepoPath(user)
+        const {subPath, _id} = user
+
+        const isCloningTask = await this.usersCollection.find({
+            owner: user.owner,
+            repo: user.repo,
+            name: user.name,
+            key: user.key,
+            type: user.type,
+            status: TASKSTATUS.BUNDLESTART
+        }).toArray()
+
+        if(isCloningTask.length) return Promise.reject() //
+
+        logger.info(`bundle start ${repoPath} ${subPath}`)
+        await this.usersCollection.updateOne({_id: user._id},{$set:{status: TASKSTATUS.BUNDLESTART}})
+
+        return rollup({
+            entry: path.join(repoPath, subPath),
+            output: path.join(repoPath,'__bundle',`${encodeURIComponent(subPath)}.js`),
+            repoPath
+        }).then(async ()=>{
+            logger.info(`bundle done ${repoPath} ${subPath}`)
+            await this.usersCollection.updateOne(
+                {_id},
+                { $set: {status: TASKSTATUS.BUNDLED, bundle_expire: Date.now() + expireConfig.timestamp} }
+            )
+        }).catch(async e=>{
+            logger.error(`bundle error ${repoPath} ${subPath}`,e)
+            await this.usersCollection.updateOne(
+                {_id},
+                { $set: {status: TASKSTATUS.BUNDLEDERROR, bundle_expire: Date.now() + expireConfig.timestamp} }
+            )
         })
-        return this.hasRepo({owner,repo,key,name}).then( async status=>{
-            if(!status){
-                await this.cloneRepo({owner,repo,key,name,subPath})
-            }
-
-            logger.info(`bundle start ${repoPath} ${subPath}`)
-            return rollup({
-                entry: path.join(repoPath,subPath),
-                output: path.join(repoPath,`./__bundle/${encodeURIComponent(subPath)}.js`),
-                repoPath
-            }).then(async ()=>{
-                logger.info(`bundle done ${repoPath} ${subPath}`)
-                await this.usersCollection.updateOne(
-                    {id},
-                    { $set: {status: TASKSTATUS.BUNDLED, bundle_expire: Date.now() + expireConfig.timestamp} }
-                )
-            }).catch(async e=>{
-                logger.error(`bundle error ${repoPath} ${subPath}`,e)
-                await this.usersCollection.updateOne(
-                    {id},
-                    { $set: {status: TASKSTATUS.BUNDLEDERROR, bundle_expire: Date.now() + expireConfig.timestamp} }
-                )
-            })
-        })
-    }
-    // getBundle({owner,repo,key,name ='',subPath = ''}){
-    //     const repoPath = getRepoPath({
-    //         owner,
-    //         repo,
-    //         name,
-    //         key
-    //     })
-    //     return this.hasRepo({
-    //         owner,
-    //         repo,
-    //         key,
-    //         name
-    //     }).then(async status=>{
-    //         if(!status){
-    //             await this.cloneRepo({owner,repo,key,name,subPath})
-    //         }
-    //         return this.hasBundle({owner,repo,key,name,subPath}).then(async (status2)=>{
-    //             if(!status2){
-    //                 await this.generateBundle({owner,repo,key,name,subPath})
-    //             }
-    //
-    //             await this.usersCollection.updateOne(
-    //                 {owner,repo,key,name,subPath},
-    //                 { $set:{bundle_expire: Date.now() + expireConfig.timestamp, repo_expire: Date.now() + expireConfig.timestamp} }
-    //             )
-    //             return fs.readFile(
-    //                 path.join(repoPath,`./__bundle/${encodeURIComponent(subPath)}.js`)
-    //             )
-    //         })
-    //     })
-    // }
-    async deleteExpiredResource(){
-        const files = await fs.readdir(resourcesFolderPath)
-        for(let file of files){
-            const fullPath = path.join(resourcesFolderPath, file)
-            const stat = await fs.lstat(fullPath);
-            if(stat.isDirectory()){
-                const [key,owner,repo,name=''] = file.split('@')
-                const repos_expire = await this.usersCollection.find(
-                    {key,owner,repo,name},
-                    {repo_expire: 1}
-                )
-                const repo_expire = Math.max(...repos_expire)
-                if(Date.now() > repo_expire) {
-                    await rimraf(fullPath)
-                    await this.usersCollection.deleteMany({
-                        key,
-                        owner,
-                        repo,
-                        name
-                    })
-                }
-                else{
-                    const bundlePath = path.join(fullPath,'__bundle')
-                    if( await checkPathExists(bundlePath)){
-                        const bundleFiles = await fs.readdir(bundlePath)
-                        for(let bundle of bundleFiles){
-                            const bundleFullPath = path.join(fullPath,'__bundle',bundle)
-
-                            const bundle_expire = await this.usersCollection.findOne(
-                                {key,owner,repo,name,subPath: decodeURIComponent(bundle)},
-                                {bundle_expire: 1}
-                            )
-                            if(Date.now() > bundle_expire){
-                                await this.usersCollection.deleteMany({
-                                    key,
-                                    owner,
-                                    repo,
-                                    name,
-                                    subPath: decodeURIComponent(bundle)
-                                })
-                                await rimraf(bundleFullPath)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
     }
 }
 
@@ -264,7 +222,7 @@ app.prepare().then(() => {
             await client.close()
             throw err
         }
-        logger.info('> Ready on http://127.0.0.1:3000')
+        logger.info(`> Ready on http://${hostname}:${port}`)
 
         const userCollection = db.collection('users')
         new BundleManager(userCollection)

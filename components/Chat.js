@@ -6,8 +6,8 @@ import {useRef, useState,forwardRef,useImperativeHandle} from "react";
 import {ChatOpenAI} from "langchain/chat_models/openai";
 import {ConversationSummaryMemory} from "langchain/memory";
 import {PromptTemplate} from "langchain/prompts";
-import {LLMChain} from "langchain";
 import {useMemoizedFn} from "ahooks/lib";
+import {LLMChain} from "langchain/chains";
 
 const memory = new ConversationSummaryMemory({
     memoryKey: "chat_history",
