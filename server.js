@@ -12,13 +12,11 @@ const { parse } = require('url')
 const next = require('next')
 const {logger} = require("./log/index.js");
 const {expireConfig,findFileUpwards} = require("./utils/server");
-const babel = require("@babel/core");
-const {babel: babelPlugins} = require('./plugins')
-
+const {hostname, port} = require('./config')
 const {checkPathExists, getRepoPath, TASKSTATUS} = serverUtils
 
 const dev = process.env.NODE_ENV !== 'production'
-const app = next({ dev })
+const app = next({ dev, hostname, port })
 const handle = app.getRequestHandler()
 
 
@@ -215,7 +213,7 @@ app.prepare().then(() => {
             await client.close()
             throw err
         }
-        logger.info('> Ready on http://127.0.0.1:3000')
+        logger.info(`> Ready on http://${hostname}:${port}`)
 
         const userCollection = db.collection('users')
         new BundleManager(userCollection)

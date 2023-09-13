@@ -48,3 +48,4 @@ yarn.lock
 /.rollup.cache/
 /public/recommend/
 /resources/
+config.js
