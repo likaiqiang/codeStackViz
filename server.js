@@ -17,7 +17,7 @@ const {checkPathExists, getRepoPath, TASKSTATUS} = serverUtils
 
 const {NEXT_PUBLIC_URL} = parseEnv(
     fs.readFileSync(
-        path.join(process.cwd(),'.env'),
+        path.join(process.cwd(),`.env.${process.env.NODE_ENV}`),
         'utf-8'
     )
 )
