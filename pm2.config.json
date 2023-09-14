@@ -1,0 +1,19 @@
+{
+  "apps": [
+    {
+      "name": "task",
+      "script": "task.js",
+      "env": {
+        "NODE_ENV": "production"
+      }
+    },
+    {
+      "name": "app",
+      "script": "server.js",
+      "args": ["--port", "3000"],
+      "env": {
+        "NODE_ENV": "production"
+      }
+    }
+  ]
+}
