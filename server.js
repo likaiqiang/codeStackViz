@@ -9,18 +9,12 @@ const {db,client} = require("./database.js");
 
 const { createServer } = require('http')
 const { parse } = require('url')
-const {parse: parseEnv} = require('envfile')
 const next = require('next')
 const {logger} = require("./log/index.js");
-const {expireConfig,findFileUpwards} = require("./utils/server");
+const {expireConfig,parseEnv} = require("./utils/server");
 const {checkPathExists, getRepoPath, TASKSTATUS} = serverUtils
 
-const {NEXT_PUBLIC_URL} = parseEnv(
-    fs.readFileSync(
-        path.join(process.cwd(),`.env.${process.env.NODE_ENV}`),
-        'utf-8'
-    )
-)
+const {NEXT_PUBLIC_URL} = parseEnv()
 
 const {hostname,port} = new URL(NEXT_PUBLIC_URL)
 

@@ -1,6 +1,7 @@
 const fs = require("fs/promises");
 const fs2 = require('fs')
 const path = require("path");
+const {parse} = require('envfile')
 
 const TASKSTATUS = {
     INIT: 0,
@@ -98,6 +99,14 @@ function findFileUpwards({fileName = 'tsconfig.json',startFilePath, rootDir}) {
 const expireConfig = {
     timestamp: 20000
 }
+const parseEnv = ()=>{
+    return parse(
+        fs2.readFileSync(
+            path.join(process.cwd(),`.env.${process.env.NODE_ENV}`),
+            'utf-8'
+        )
+    )
+}
 
 module.exports = {
     getRepoPath,
@@ -105,5 +114,6 @@ module.exports = {
     checkPathExists,
     TASKSTATUS,
     expireConfig,
-    findFileUpwards
+    findFileUpwards,
+    parseEnv
 }

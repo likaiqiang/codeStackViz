@@ -1,7 +1,9 @@
 const { MongoClient } = require('mongodb');
 const { createRouter } = require('next-connect');
+const {parseEnv} = require("./utils/server");
 
-const url = process.env.NODE_ENV === 'development' ? 'mongodb://127.0.0.1:27017' : `mongodb://${process.env.MONGODB_USER}:${process.env.MONGODB_PASSWORD}@127.0.0.1:27017`
+const {MONGODB_USER,MONGODB_PASSWORD} = parseEnv()
+const url = process.env.NODE_ENV === 'development' ? 'mongodb://127.0.0.1:27017' : `mongodb://${MONGODB_USER}:${MONGODB_PASSWORD}@127.0.0.1:27017`
 
 
 const client = new MongoClient(url);
