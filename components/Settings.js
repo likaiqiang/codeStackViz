@@ -172,19 +172,47 @@ export default (props)=>{
                                                                         selectEntryModalRef.current.show()
                                                                         setDisplayFunc(
                                                                             filtedDisplayFunc.map(item=>{
-                                                                                const {id,name} = item[0]
+                                                                                const {id,name,path,npm,npmPath} = item[0]
                                                                                 return {
                                                                                     id,
-                                                                                    name
+                                                                                    name,
+                                                                                    maxLevel: item[1].maxLevel,
+                                                                                    path,
+                                                                                    npm,
+                                                                                    npmPath,
                                                                                 }
                                                                             })
                                                                         )
                                                                     }
                                                                     else{
-                                                                        setToast(draft => {
-                                                                            draft.message = 'display function not found'
-                                                                            draft.isOpen = true
-                                                                        })
+                                                                        if(displayFunc.length){
+                                                                            selectEntryModalRef.current.show()
+                                                                            setDisplayFunc(
+                                                                                displayFunc.map(item=>{
+                                                                                    const {id,name,path,npm,npmPath} = item[0]
+                                                                                    return {
+                                                                                        id,
+                                                                                        name,
+                                                                                        path,
+                                                                                        npm,
+                                                                                        npmPath,
+                                                                                        maxLevel: item[1].maxLevel
+                                                                                    }
+                                                                                })
+                                                                            )
+                                                                            setTimeout(()=>{
+                                                                                setToast(draft => {
+                                                                                    draft.message = `no function with call stack greater than ${defaultRenderMaxLevel} was found, all will be shown`
+                                                                                    draft.isOpen = true
+                                                                                })
+                                                                            },300)
+                                                                        }
+                                                                        else{
+                                                                            setToast(draft => {
+                                                                                draft.message = 'display function not found'
+                                                                                draft.isOpen = true
+                                                                            })
+                                                                        }
                                                                     }
 
                                                                 }}>
@@ -296,25 +324,29 @@ export default (props)=>{
                     </Else>
                 </Whether>
             </div>
-            <Snackbar
-                anchorOrigin={{
-                    vertical: 'top',
-                    horizontal: 'center',
-                }}
-                open={toast.isOpen}
-                onClose={()=>{
-                    setToast(draft => {
-                        draft.isOpen = false
-                        draft.message = ''
-                    })
-                }}
-                autoHideDuration={toast.duration || 3000}
-                message={toast.message}
-
-            />
             {
                 ReactDOM.createPortal(
                     <SelectEntryModal ref={selectEntryModalRef} list={displayFunc} updateList={setDisplayFunc}/>,
+                    document.body
+                )
+            }
+            {
+                ReactDOM.createPortal(
+                    <Snackbar
+                        anchorOrigin={{
+                            vertical: 'top',
+                            horizontal: 'center',
+                        }}
+                        open={toast.isOpen}
+                        onClose={()=>{
+                            setToast(draft => {
+                                draft.isOpen = false
+                                draft.message = ''
+                            })
+                        }}
+                        autoHideDuration={toast.duration || 3000}
+                        message={toast.message}
+                    />,
                     document.body
                 )
             }

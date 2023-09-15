@@ -14,17 +14,19 @@ export function collecVertexsByAst(ast){
         FunctionDeclaration(path){
             const {id} = path.node
             const {start, end} = id
-            vertexs.push({
-                id: `${id.name}-${start}-${end}`,
-                loc:{
-                    start,
-                    end
-                },
-                isGlobal: true,
-                exported:false,
-                name: generateNameByPath(path),
-                path
-            })
+            if(id.name !== 'jsCodeViewEntryFunc'){
+                vertexs.push({
+                    id: `${id.name}-${start}-${end}`,
+                    loc:{
+                        start,
+                        end
+                    },
+                    isGlobal: true,
+                    exported:false,
+                    name: generateNameByPath(path),
+                    path
+                })
+            }
         },
         // var a = ()=>{}
         VariableDeclarator(path){
@@ -93,22 +95,22 @@ export function collecVertexsByAst(ast){
                 path
             })
         },
-        ReturnStatement(path){
-            const {argument} = path.node
-            if(argument && (argument.type === 'FunctionExpression' || argument.type === 'ArrowFunctionExpression')){
-                const {start, end,id} = argument
-                vertexs.push({
-                    id: `${id?.name || 'anonymous'}-${start}-${end}`,
-                    loc:{
-                        start,
-                        end
-                    },
-                    exported:false,
-                    name: generateNameByPath(path),
-                    path
-                })
-            }
-        }
+        // ReturnStatement(path){
+        //     const {argument} = path.node
+        //     if(argument && (argument.type === 'FunctionExpression' || argument.type === 'ArrowFunctionExpression')){
+        //         const {start, end,id} = argument
+        //         vertexs.push({
+        //             id: `${id?.name || 'anonymous'}-${start}-${end}`,
+        //             loc:{
+        //                 start,
+        //                 end
+        //             },
+        //             exported:false,
+        //             name: generateNameByPath(path),
+        //             path
+        //         })
+        //     }
+        // }
     })
     return vertexs
 }
@@ -231,8 +233,6 @@ export function getFuncVertexs({ast}){
 
     const server = new tern.Server({})
     server.addFile("entry.js", code);
-
-    window.code = code
 
     traverse(newAst,{
         FunctionDeclaration(path){

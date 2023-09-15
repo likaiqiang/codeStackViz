@@ -2,12 +2,12 @@ import React, {useState, forwardRef, useImperativeHandle, useContext, useRef, us
 import {TextField, List, ListItem, ListItemText, IconButton} from '@mui/material';
 import PageContext from '@/context'
 import CustomModal, {modalManager} from "@/components/CustomModal";
-import Whether from "@/components/Whether";
+import {generateSplicedCode} from "@/cg/common";
 
 const SelectEntryModal = (props,ref)=>{
-    const {list = [],updateList=()=>{}} = props
+    const {list = []} = props
     const [searchText, setSearchText] = useState('');
-    const {renderFiltedSvg,push, clear} = useContext(PageContext)
+    const {renderFiltedSvg,push, clear, setCode} = useContext(PageContext)
     const modalRef = useRef()
 
     useImperativeHandle(ref,()=>{
@@ -29,15 +29,27 @@ const SelectEntryModal = (props,ref)=>{
                 <List>
                     {list.map(item => (
                         <ListItem button={true} key={item.id} onClick={()=>{
-                            renderFiltedSvg({
-                                entryFuncId: item.id
-                            }).then(()=>{
+                            if(item.maxLevel > 1){
+                                renderFiltedSvg({
+                                    entryFuncId: item.id
+                                }).then(()=>{
+                                    modalManager.closeAllModals()
+                                    clear()
+                                    push(item.id)
+                                    setCode('')
+                                })
+                            }
+                            else {
+                                const code = generateSplicedCode({
+                                    path: item.path,
+                                    npm: item.npm,
+                                    npmPath: item.npmPath
+                                })
+                                setCode(code)
                                 modalManager.closeAllModals()
-                                clear()
-                                push(item.id)
-                            })
+                            }
                         }}>
-                            <ListItemText primary={item.name} />
+                            <ListItemText primary={item.name + (item.maxLevel === 1 ? '【only one level】' : '')} />
                         </ListItem>
                     ))}
                 </List>

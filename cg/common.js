@@ -77,7 +77,7 @@ export const generateSplicedCode = ({path,npm,npmPath})=>{
 export function filterJsonByEntry({dotJson,entryFuncId}) {
     const {statements: nodes} = dotJson
     const relatedNodes = new Map(); // 用 Map 来存储相关节点
-    let maxLevel = 0
+    let maxLevel = 1
     function findRelatedNodes(entry,level) {
         nodes.forEach(node => {
             const key = node.head.id + '-' + node.tail.id
@@ -101,7 +101,7 @@ export function filterJsonByEntry({dotJson,entryFuncId}) {
             }
         });
     }
-    findRelatedNodes(entryFuncId,0);
+    findRelatedNodes(entryFuncId,maxLevel);
 
     return {
         ...dotJson,

@@ -110,16 +110,12 @@ export default function Home(props) {
         setCode(code)
     }
 
-    const renderFiltedSvg = ({entryFuncId, renderMaxLevel = defaultRenderMaxLevel}) => {
+    const renderFiltedSvg = ({entryFuncId}) => {
         const {current: config} = configRef
-        let filteredDotJson = filterJsonByEntry({
+        const filteredDotJson = filterJsonByEntry({
             dotJson: config.dotJson,
             entryFuncId
         })
-        filteredDotJson = {
-            ...filteredDotJson,
-            statements: filteredDotJson.statements.filter(edge => edge.level <= Math.min(renderMaxLevel, filteredDotJson.maxLevel))
-        }
 
         const {dot, nodes} = generateDotStr({
             filteredDotJson
@@ -143,7 +139,8 @@ export default function Home(props) {
                 renderFiltedSvg,
                 getBatchConfigByCode,
                 push,
-                clear
+                clear,
+                setCode
             }}>
                 <Graphviz
                     className={'codeSvg'}

@@ -17,7 +17,6 @@ export const getConfigByCode = ({code})=>{
     }
 }
 
-
 export function generateDotStr({filteredDotJson,selectNodeId}){
     const {node = {},statements=[]} = filteredDotJson
     // node  ["fillcolor"="#eeeeee", "style"="filled,rounded", "shape"="rect"];
