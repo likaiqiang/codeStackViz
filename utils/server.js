@@ -76,7 +76,7 @@ const getFilesByUsers = async (files, usersCollection)=>{
 
 
 const getRepoPath = ({owner,repo,key,name ='',type})=>{
-    const resourcespath = process.env.RESOURCES_PATH
+    const resourcespath = process.env.RESOURCES_PATH || parseEnv().RESOURCES_PATH
 
     const folderPath = type === 'resource' ? path.join(resourcespath,'resources') : path.join(resourcespath,'recommend')
     return path.join(folderPath,`${key}@${encodeURIComponent(owner)}@${encodeURIComponent(repo)}` + (!!name ? `@${encodeURIComponent(name)}` : ''))

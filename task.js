@@ -3,7 +3,7 @@ const {rimraf} = require("rimraf");
 const simpleGit = require("simple-git");
 const path = require("path");
 const rollup = require("./rollup");
-const {expireConfig, TASKSTATUS} = require("./utils/server");
+const {expireConfig, TASKSTATUS, getRepoPath} = require("./utils/server");
 const {db} = require("./database");
 
 const promiseAllWithConcurrency = (task = [],option = {})=>{

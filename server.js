@@ -5,9 +5,9 @@ const next = require('next')
 const {logger} = require("./log/index.js");
 const {parseEnv} = require("./utils/server");
 
-const {NEXT_PUBLIC_URL} = parseEnv()
+const {URL: url} = parseEnv()
 
-const {hostname,port} = new URL(NEXT_PUBLIC_URL)
+const {hostname,port} = new URL(url)
 
 const dev = process.env.NODE_ENV !== 'production'
 const app = next({ dev, hostname, port })

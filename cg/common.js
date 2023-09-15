@@ -33,24 +33,24 @@ export const generateNameByPath = (path)=>{
             return classPath.node.id.name + '.' + key.name
         }
     }
-    if(path.type === 'ReturnStatement'){
-        const {argument} = path.node
-        const {id} = argument
-
-        const parentPath = path.findParent(path=> path.isFunctionDeclaration() || path.isArrowFunctionExpression() || path.isFunctionExpression())
-
-        if(parentPath.type === 'FunctionDeclaration'){
-            return (parentPath.id?.name || 'anonymous') + 'return' + (id?.name || 'anonymous')
-        }
-        if(parentPath.type === 'ArrowFunctionExpression' || parentPath.type === 'FunctionExpression'){
-            const bindings = parentPath.scope.bindings;
-            for (const [name, binding] of Object.entries(bindings)) {
-                if (binding.path === parentPath.parentPath) {
-                    return name + 'return' + (id?.name || 'anonymous')
-                }
-            }
-        }
-    }
+    // if(path.type === 'ReturnStatement'){
+    //     const {argument} = path.node
+    //     const {id} = argument
+    //
+    //     const parentPath = path.findParent(path=> path.isFunctionDeclaration() || path.isArrowFunctionExpression() || path.isFunctionExpression())
+    //
+    //     if(parentPath.type === 'FunctionDeclaration'){
+    //         return (parentPath.id?.name || 'anonymous') + 'return' + (id?.name || 'anonymous')
+    //     }
+    //     if(parentPath.type === 'ArrowFunctionExpression' || parentPath.type === 'FunctionExpression'){
+    //         const bindings = parentPath.scope.bindings;
+    //         for (const [name, binding] of Object.entries(bindings)) {
+    //             if (binding.path === parentPath.parentPath) {
+    //                 return name + 'return' + (id?.name || 'anonymous')
+    //             }
+    //         }
+    //     }
+    // }
     return ''
 }
 
