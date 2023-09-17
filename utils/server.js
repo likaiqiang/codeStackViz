@@ -8,9 +8,7 @@ const TASKSTATUS = {
     REPOCLONEDEND: 1,
     BUNDLED:2,
     REPOCLONEDENDERROR: 3,
-    BUNDLEDERROR: 4,
-    REPOSTARTCLONE: 5,
-    BUNDLESTART:6
+    BUNDLEDERROR: 4
 }
 
 async function checkPathExists(path) {
@@ -25,17 +23,14 @@ async function checkPathExists(path) {
 const getFilesByUsers = async (files, usersCollection)=>{
 
     const taskObj = files.reduce((acc,user)=>{
-        const repoPath = getRepoPath(user)
+        const repoPath = getRepoPathWithoutSubPath(user)
 
         acc[repoPath] = (acc[repoPath] || []).concat(
             {
                 bundleFilePromise: user.status === TASKSTATUS.BUNDLED ? (
-                    fs.readFile(
-                        path.join(
-                            repoPath,'__bundle',encodeURIComponent(user.subPath) + '.js'
-                        ),
-                        'base64'
-                    )
+                    usersCollection.findOne(
+                        {_id: user._id}
+                    ).then(task=> task.bundled)
                 ) : null,
                 bundleFileName: user.subPath,
                 status: user.status,
@@ -74,12 +69,21 @@ const getFilesByUsers = async (files, usersCollection)=>{
     )
 }
 
-
-const getRepoPath = ({owner,repo,key,name ='',type})=>{
+const getRepoPathWithoutSubPath = ({owner,repo,key,name ='',type,subPath})=>{
     const resourcespath = process.env.RESOURCES_PATH || parseEnv().RESOURCES_PATH
 
-    const folderPath = type === 'resource' ? path.join(resourcespath,'resources') : path.join(resourcespath,'recommend')
+    const folderPath = path.join(resourcespath,type === 'resource' ? 'resources' :'recommend')
+
     return path.join(folderPath,`${key}@${encodeURIComponent(owner)}@${encodeURIComponent(repo)}` + (!!name ? `@${encodeURIComponent(name)}` : ''))
+}
+
+
+const getRepoPath = ({owner,repo,key,name ='',type,subPath})=>{
+    const resourcespath = process.env.RESOURCES_PATH || parseEnv().RESOURCES_PATH
+
+    const folderPath = path.join(resourcespath,type === 'resource' ? 'resources' :'recommend')
+
+    return path.join(folderPath,`${key}@${encodeURIComponent(owner)}@${encodeURIComponent(repo)}` + (!!name ? `@${encodeURIComponent(name)}` : '') + `@${encodeURIComponent(subPath)}`)
 }
 
 function findFileUpwards({fileName = 'tsconfig.json',startFilePath, rootDir}) {
@@ -102,13 +106,14 @@ const expireConfig = {
 const parseEnv = ()=>{
     return parse(
         fs2.readFileSync(
-            path.join(process.cwd(),`.env.${process.env.NODE_ENV}`),
+            path.join(process.cwd(),`.env.${process.env.NODE_ENV || 'development'}`),
             'utf-8'
         )
     )
 }
 
 module.exports = {
+    getRepoPathWithoutSubPath,
     getRepoPath,
     getFilesByUsers,
     checkPathExists,

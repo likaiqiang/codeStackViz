@@ -29,6 +29,7 @@ const SelectEntryModal = (props,ref)=>{
                 <List>
                     {list.map(item => (
                         <ListItem button={true} key={item.id} onClick={()=>{
+
                             if(item.maxLevel > 1){
                                 renderFiltedSvg({
                                     entryFuncId: item.id
@@ -36,16 +37,24 @@ const SelectEntryModal = (props,ref)=>{
                                     modalManager.closeAllModals()
                                     clear()
                                     push(item.id)
-                                    setCode('')
+                                    setCode(draft=>{
+                                        draft.value = ''
+                                        draft.type = ''
+                                        draft.paths = {}
+                                    })
                                 })
                             }
                             else {
-                                const code = generateSplicedCode({
-                                    path: item.path,
-                                    npm: item.npm,
-                                    npmPath: item.npmPath
+                                setCode(draft=>{
+                                    const splicedCode = generateSplicedCode({
+                                        path: item.path,
+                                        npm: item.npm,
+                                        npmPath: item.npmPath
+                                    })
+                                    for(let key in splicedCode){
+                                        draft[key] = splicedCode[key]
+                                    }
                                 })
-                                setCode(code)
                                 modalManager.closeAllModals()
                             }
                         }}>

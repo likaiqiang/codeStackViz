@@ -21,7 +21,11 @@ import CustomModal from "@/components/CustomModal";
 
 export default function Home(props) {
 
-    const [code, setCode] = useState('')
+    const [code, setCode] = useImmer({
+        value:'',
+        type:'',
+        paths:{}
+    })
     const [tasks,setTasks] = useState([])
     const [recommend, setRecommend] = useState([])
 
@@ -77,6 +81,7 @@ export default function Home(props) {
     }
 
     const configRef = useRef()
+    const codeEditorRef = useRef()
 
     const getBatchConfigByCode = ({code})=>{
         return configRef.current = getConfigByCode({code})
@@ -106,8 +111,15 @@ export default function Home(props) {
     const onSelectNodeCode = (id) => {
         const {current: config} = configRef
         const targetNode = config.nodes[id]
-        const code = generateSplicedCode(targetNode)
-        setCode(code)
+        const splicedCode = generateSplicedCode(targetNode)
+        setCode(draft => {
+            for(let key in splicedCode){
+                draft[key] = splicedCode[key]
+            }
+        })
+        setTimeout(()=>{
+            codeEditorRef.current.scrollToDef(splicedCode)
+        },300)
     }
 
     const renderFiltedSvg = ({entryFuncId}) => {
@@ -177,7 +189,7 @@ export default function Home(props) {
                     }}
                 />
                 <div className={'codeView'}>
-                    <CodeEditor value={code} onExplainClick={explainCode}/>
+                    <CodeEditor ref={codeEditorRef} code={code} onExplainClick={explainCode}/>
                     <div className={'codeExplainText'}>
                         <Chat ref={chatRef}/>
                     </div>

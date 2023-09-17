@@ -69,9 +69,22 @@ export const generateSplicedCode = ({path,npm,npmPath})=>{
     }
     if(node.type === 'ClassMethod'){
         const classPath = path.findParent((path) => path.isClassDeclaration());
-        return code + generateCode(classPath)
+        return {
+            value:code + generateCode(classPath),
+            type:'class',
+            paths:{
+                nodePath: path,
+                classPath
+            }
+        }
     }
-    return code + generateCode(path)
+    return {
+        value: code + generateCode(path),
+        type:'',
+        paths:{
+            nodePath: path
+        }
+    }
 }
 
 export function filterJsonByEntry({dotJson,entryFuncId}) {

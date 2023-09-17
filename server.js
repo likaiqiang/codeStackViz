@@ -9,11 +9,9 @@ const {URL: url} = parseEnv()
 
 const {hostname,port} = new URL(url)
 
-const dev = process.env.NODE_ENV !== 'production'
+const dev = (process.env.NODE_ENV || 'development') !== 'production'
 const app = next({ dev, hostname, port })
 const handle = app.getRequestHandler()
-
-console.log('process.env.NODE_ENV',process.env.NODE_ENV);
 
 app.prepare().then(() => {
 
