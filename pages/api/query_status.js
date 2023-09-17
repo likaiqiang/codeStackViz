@@ -14,12 +14,7 @@ router.get(async (req,res)=>{
     ).toArray()
     await Promise.all(
         errorTask.map(task=>{
-            if(task.status === TASKSTATUS.REPOCLONEDENDERROR){
-                return usersCollection.updateOne({_id: task._id},{$set:{status: TASKSTATUS.INIT}})
-            }
-            if(task.status === TASKSTATUS.BUNDLEDERROR){
-                return usersCollection.updateOne({_id: task._id},{$set: {status: TASKSTATUS.REPOCLONEDEND}})
-            }
+            return usersCollection.updateOne({_id: task._id},{$set:{status: TASKSTATUS.INIT}})
         })
     )
 

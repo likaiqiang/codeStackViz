@@ -13,16 +13,14 @@ const {parse} = require('@babel/parser')
 const traverse = require('@babel/traverse').default
 const generateCode = require('@babel/generator').default
 const fs = require('fs/promises')
+const {getRepoPath} = require("./utils/server");
 
-const rollupBuild = ({entry,output,repoPath})=>{
-
+const rollupBuild = ({entry, output, repoPath})=>{
     const tsConfigPathDir = findFileUpwards({
         fileName: 'tsconfig.json',
         startFilePath: entry,
         rootDir: repoPath
     })
-
-
 
     let tsConfig = {},
         parsedConfig = {},
@@ -51,7 +49,6 @@ const rollupBuild = ({entry,output,repoPath})=>{
             babel({
                 plugins:[
                     ["@babel/plugin-transform-typescript",{allowDeclareFields: true}],
-                    // [babelPlugins.transformPublicClassFields()],
                 ],
                 extensions:['.js', '.jsx', '.es6', '.es', '.mjs','.ts']
             })
@@ -64,7 +61,7 @@ const rollupBuild = ({entry,output,repoPath})=>{
             format: "es", // 输出格式，支持 amd, cjs, es, iife, umd 等
             // name: "MyLibrary", // 输出的全局变量名，仅适用于 iife 和 umd 格式
             // sourcemap: true
-        }).then(res=>{
+        }).then(async res=>{
             const {code} = res.output[0]
             const ast = parse(code,{
                 sourceType:'unambiguous'
@@ -73,7 +70,11 @@ const rollupBuild = ({entry,output,repoPath})=>{
                 ast,
                 babelPlugins.transformPublicClassFields().visitor
             )
-            return fs.writeFile(output, generateCode(ast).code)
+            return Buffer.from(
+                generateCode(ast).code,
+                'utf8'
+            )
+                .toString('base64')
         })
     })
 }

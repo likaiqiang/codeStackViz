@@ -2,7 +2,7 @@
   "apps": [
     {
       "name": "task",
-      "script": "task.js",
+      "script": "runTask.js",
       "env": {
         "NODE_ENV": "production"
       }

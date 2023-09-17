@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "concurrently \"npm run devserve\" \"npm run task\"",
-    "task": "npx cross-env NODE_ENV=development node task.js",
+    "task": "npx cross-env NODE_ENV=development node runTask.js",
     "devserve": "npx cross-env NODE_ENV=development node server.js",
     "build": "next build && node upload.js",
     "start": "pm2 start pm2.config.json",
@@ -85,6 +85,7 @@
     "minimatch": "^9.0.3",
     "mongodb": "^6.0.0",
     "next-connect": "^1.0.0-next.4",
+    "next-http-proxy-middleware": "^1.2.5",
     "node-ssh": "^13.1.0",
     "rimraf": "^5.0.1",
     "simple-git": "^3.19.1",

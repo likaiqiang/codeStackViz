@@ -39,40 +39,26 @@ const delay = (timer= 60000)=>{
 
 class BundleManager {
     usersCollection
-    constructor(usersCollection) {
+    type
+    constructor(usersCollection,type) {
         this.usersCollection = usersCollection
-        // const checkExpired = ()=>{
-        //     this.deleteExpiredResource().then(async ()=>{
-        //         await delay()
-        //         checkExpired()
-        //     })
-        // }
-        const checkInterruptedTask = ()=>{
-            logger.info('start checkInterruptedTask')
-            this.checkTask().then(async ()=>{
-                logger.info('finish checkInterruptedTask')
-                await delay()
-                checkInterruptedTask()
-            })
-        }
-        checkInterruptedTask()
-        // checkExpired()
-        // this.checkTask()
+        this.type = type || 'resource'
+    }
+    checkInterruptedTask(){
+        logger.info('start checkInterruptedTask')
+        this.checkTask().then(async ()=>{
+            logger.info('finish checkInterruptedTask')
+            await delay()
+            this.checkInterruptedTask()
+        })
     }
     async checkTask(){
-        const interruptedTask = await (this.usersCollection.find({type:'resource',status: { $in: [TASKSTATUS.INIT, TASKSTATUS.REPOCLONEDEND] }})).toArray()
+        const interruptedTask = await (this.usersCollection.find({type: this.type,status: { $in: [TASKSTATUS.INIT] }})).toArray()
         const promiseTask = interruptedTask.map(task=>{
-            if(task.status === TASKSTATUS.INIT){
-                return ()=>{
-                    return this.cloneRepo(task).then(()=>{
-                        return this.generateBundle(task) // 会执行两次，待调查,有点奇怪
-                    })
-                }
-            }
-            if(task.status === TASKSTATUS.REPOCLONEDEND){
-                return ()=>{
-                    return this.generateBundle(task) // 会执行两次，待调查,有点奇怪
-                }
+            return ()=>{
+                return this.cloneRepo(task).then(()=>{
+                    return this.generateBundle(task)
+                })
             }
         })
         return promiseAllWithConcurrency(promiseTask)
@@ -81,35 +67,8 @@ class BundleManager {
         const repoPath = getRepoPath(task)
         const {owner,repo,name,_id} = task
 
-        const isCloningTask = await this.usersCollection.find({
-            owner: task.owner,
-            repo: task.repo,
-            name: task.name,
-            key: task.key,
-            type: task.type,
-            status: TASKSTATUS.REPOSTARTCLONE
-        }).toArray()
-
-        if(isCloningTask.length) return Promise.reject() // 避免同一目录重复clone
-
-
         logger.info(`clone start ${repoPath}`)
-        await this.usersCollection.updateOne({_id: task._id},{$set:{status: TASKSTATUS.REPOSTARTCLONE}})
-        const clonedTask = await this.usersCollection.find({
-            owner: task.owner,
-            repo: task.repo,
-            name: task.name,
-            type: task.type,
-            key: task.key,
-            status: TASKSTATUS.REPOCLONEDEND
-        }).toArray()
-        if(clonedTask.length){
-            logger.info(`clone done ${repoPath}`)
-            return this.usersCollection.updateOne(
-                {_id},
-                { $set: {status: TASKSTATUS.REPOCLONEDEND} }
-            )
-        }
+
         await rimraf(repoPath)
         await simpleGit().clone(`https://github.com/${owner}/${repo}.git` + (name ? ` -b ${name}` : ''), repoPath ).then(async ()=>{
             const gitDir = path.join(repoPath, '.git')
@@ -127,63 +86,33 @@ class BundleManager {
             )
         })
     }
-    hasRepo({owner,repo,key,name =''}){
-        const repoPath = getRepoPath({
-            owner,
-            repo,
-            name,
-            key
-        })
-        return checkPathExists(repoPath)
-    }
-    hasBundle({owner,repo,key,name ='',subPath = ''}){
-        const repoPath = getRepoPath({
-            owner,
-            repo,
-            name,
-            key
-        })
-        return checkPathExists(
-            path.join(repoPath,`./__bundle/${encodeURIComponent(subPath)}.js`)
-        )
-    }
     async generateBundle(user){
         const repoPath = getRepoPath(user)
         const {subPath, _id} = user
 
-        const isCloningTask = await this.usersCollection.find({
-            owner: user.owner,
-            repo: user.repo,
-            name: user.name,
-            key: user.key,
-            type: user.type,
-            status: TASKSTATUS.BUNDLESTART
-        }).toArray()
-
-        if(isCloningTask.length) return Promise.reject() //
-
         logger.info(`bundle start ${repoPath} ${subPath}`)
-        await this.usersCollection.updateOne({_id: user._id},{$set:{status: TASKSTATUS.BUNDLESTART}})
 
         return rollup({
             entry: path.join(repoPath, subPath),
             output: path.join(repoPath,'__bundle',`${encodeURIComponent(subPath)}.js`),
             repoPath
-        }).then(async ()=>{
+        }).then(async (code)=>{
             logger.info(`bundle done ${repoPath} ${subPath}`)
             await this.usersCollection.updateOne(
                 {_id},
-                { $set: {status: TASKSTATUS.BUNDLED, bundle_expire: Date.now() + expireConfig.timestamp} }
+                { $set: {status: TASKSTATUS.BUNDLED, bundle_expire: Date.now() + expireConfig.timestamp, bundled: code} }
             )
+            await rimraf(repoPath)
         }).catch(async e=>{
             logger.error(`bundle error ${repoPath} ${subPath}`,e)
             await this.usersCollection.updateOne(
                 {_id},
-                { $set: {status: TASKSTATUS.BUNDLEDERROR, bundle_expire: Date.now() + expireConfig.timestamp} }
+                { $set: {status: TASKSTATUS.BUNDLEDERROR} }
             )
         })
     }
 }
 
-const userCollection = db.collection('users')
-new BundleManager(userCollection)
+module.exports = {
+    BundleManager
+}

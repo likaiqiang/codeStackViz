@@ -52,7 +52,7 @@ function tsconfigAlias({baseUrl,paths = []}) {
                     const relativePath = entry.name.endsWith('*') ? importee.slice(entry.name.length -1) : '.';
 
                     for (const find of entry.find) {
-                        const potentialPaths = extensions.map(ext => path.resolve(find, relativePath + ext));
+                        const potentialPaths = extensions.map(ext => path.join(find, relativePath + ext));
 
                         for (const potentialPath of potentialPaths) {
                             if (fs.existsSync(potentialPath)) {
@@ -61,7 +61,7 @@ function tsconfigAlias({baseUrl,paths = []}) {
                         }
 
                         for (const ext of extensions) {
-                            const indexPath = path.join(find, `index${ext}`);
+                            const indexPath = path.join(find, relativePath,`index${ext}`);
 
                             if (fs.existsSync(indexPath)) {
                                 return { id: indexPath, moduleSideEffects: false };

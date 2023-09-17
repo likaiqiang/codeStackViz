@@ -287,3 +287,6 @@ dt {
 dd {
   margin-left: 2em;
 }
+.myInlineDecoration {
+  background-color: yellow;
+}
