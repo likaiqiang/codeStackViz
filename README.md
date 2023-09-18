@@ -24,7 +24,7 @@ This project is a website tool designed to assist developers in reading source c
 
 ### Usage
 
-1. Visit the website: [Project Website (Under Preparation)](https://)
+1. Visit the [website](https://daxigua.site/)
 
 2. Configure the entry file: Search for a GitHub repository on the website and select the entry file.
 
