@@ -142,7 +142,10 @@ export default function Home(props) {
         }
         return renderSvg(dot).then(() => ({dot, nodes}))
     }
-
+    const renderExpDot = ()=> {
+        const {clear} = graphvizRef.current
+        clear()
+    }
     const popperRef = useRef()
     const chatRef = useRef()
     return (
@@ -152,7 +155,8 @@ export default function Home(props) {
                 getBatchConfigByCode,
                 push,
                 clear,
-                setCode
+                setCode,
+                renderExpDot
             }}>
                 <Graphviz
                     className={'codeSvg'}

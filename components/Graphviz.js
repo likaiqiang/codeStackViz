@@ -121,7 +121,10 @@ const Graphviz = (props,ref) => {
 
     useImperativeHandle(ref,()=>{
         return {
-            renderSvg
+            renderSvg,
+            clear(){
+                select(`#${eleRef.current.id}`).html("")
+            }
         }
     })
 

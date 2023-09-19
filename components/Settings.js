@@ -76,12 +76,28 @@ export default (props)=>{
             name,
             subPath
         }
-        return fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${subPath}${name ? ('?ref=' + name) : ''}`).then(res=>res.json())
+        try {
+            const headers = process.env.NEXT_PUBLIC_GIT_TOKEN ? {Authorization: `token ${process.env.NEXT_PUBLIC_GIT_TOKEN}`} : {}
+            return fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${subPath}${name ? ('?ref=' + name) : ''}`,{
+                headers
+            }).then(res=>res.json())
+        } catch (err){
+            if(err.message){
+                setToast(draft => {
+                    draft.isOpen = true
+                    draft.message = err.message
+                })
+            }
+            return Promise.reject(err)
+        }
     }
 
     const onSearchGh = ({language=[],keyword})=>{
         const lg = language.map(lan=> `language:${lan}`).join('+')
-        return fetch(`https://api.github.com/search/repositories?q=${lg}+${keyword}`).then(res=>res.json()).then((res)=>{
+        const headers = process.env.NEXT_PUBLIC_GIT_TOKEN ? {Authorization: `token ${process.env.NEXT_PUBLIC_GIT_TOKEN}`} : {}
+        return fetch(`https://api.github.com/search/repositories?q=${lg}+${keyword}`,{
+            headers
+        }).then(res=>res.json()).then((res)=>{
             if(res.message){
                 setToast(draft => {
                     draft.isOpen = true

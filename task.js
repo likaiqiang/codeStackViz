@@ -79,11 +79,12 @@ class BundleManager {
             )
             await rimraf(gitDir)
         }).catch(async e=>{
-            logger.error(`clone error ${repoPath}`,e)
             await this.usersCollection.updateOne(
                 {_id},
                 { $set: {status: TASKSTATUS.REPOCLONEDENDERROR} }
             )
+            logger.error(`clone error ${repoPath}`,e)
+            return Promise.reject(e)
         })
     }
     async generateBundle(user){
@@ -104,11 +105,12 @@ class BundleManager {
             )
             await rimraf(repoPath)
         }).catch(async e=>{
-            logger.error(`bundle error ${repoPath} ${subPath}`,e)
             await this.usersCollection.updateOne(
                 {_id},
                 { $set: {status: TASKSTATUS.BUNDLEDERROR} }
             )
+            logger.error(`bundle error ${repoPath} ${subPath}`,e)
+            return Promise.reject(e)
         })
     }
 }

@@ -35,23 +35,24 @@ const rollupBuild = ({entry, output, repoPath})=>{
     return rollup({
         input: entry,
         plugins: [
-            json(),
-            commonjs({
-                strictRequires: true
-            }),
             resolve({
                 extensions:['.js','.ts','.json']
-            }),// 解析 node_modules 中的模块
-            rollupPlugins.tsconfigAlias({
+            }),
+            json(),
+            rollupPlugins.tsPlugin({
                 baseUrl: finalBaseUrl,
                 paths: tsConfigPathDir ? parsedConfig.options.paths :undefined
             }),
-            babel({
-                plugins:[
-                    ["@babel/plugin-transform-typescript",{allowDeclareFields: true}],
-                ],
-                extensions:['.js', '.jsx', '.es6', '.es', '.mjs','.ts']
-            })
+            // typescriptPaths({
+            //     tsConfigPath: path.join(tsConfigPathDir,'tsconfig.json')
+            // }),
+            commonjs()
+            // babel({
+            //     plugins:[
+            //         ["@babel/plugin-transform-typescript",{allowDeclareFields: true}]
+            //     ],
+            //     extensions:['.js', '.jsx', '.es6', '.es', '.mjs','.ts']
+            // })
         ],
         external: external()
 
@@ -63,17 +64,14 @@ const rollupBuild = ({entry, output, repoPath})=>{
             // sourcemap: true
         }).then(async res=>{
             const {code} = res.output[0]
-            const ast = parse(code,{
-                sourceType:'unambiguous'
-            })
-            traverse(
-                ast,
-                babelPlugins.transformPublicClassFields().visitor
-            )
-            return Buffer.from(
-                generateCode(ast).code,
-                'utf8'
-            )
+            // const ast = parse(code,{
+            //     sourceType:'unambiguous'
+            // })
+            // traverse(
+            //     ast,
+            //     babelPlugins.transformPublicClassFields().visitor
+            // )
+            return Buffer.from(code)
                 .toString('base64')
         })
     })

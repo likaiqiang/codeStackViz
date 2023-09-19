@@ -7,7 +7,7 @@ import {generateSplicedCode} from "@/cg/common";
 const SelectEntryModal = (props,ref)=>{
     const {list = []} = props
     const [searchText, setSearchText] = useState('');
-    const {renderFiltedSvg,push, clear, setCode} = useContext(PageContext)
+    const {renderFiltedSvg,push, clear, setCode, renderExpDot} = useContext(PageContext)
     const modalRef = useRef()
 
     useImperativeHandle(ref,()=>{
@@ -55,6 +55,8 @@ const SelectEntryModal = (props,ref)=>{
                                         draft[key] = splicedCode[key]
                                     }
                                 })
+                                clear()
+                                renderExpDot()
                                 modalManager.closeAllModals()
                             }
                         }}>
