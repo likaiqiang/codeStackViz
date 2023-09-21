@@ -4,22 +4,30 @@ import Messages from "@/components/Messages";
 import TextareaAutosize from 'react-textarea-autosize';
 import {useRef, useState,forwardRef,useImperativeHandle} from "react";
 import {ChatOpenAI} from "langchain/chat_models/openai";
-import {ConversationSummaryMemory} from "langchain/memory";
-import {PromptTemplate} from "langchain/prompts";
+import {BufferWindowMemory } from "langchain/memory";
+import {
+    PromptTemplate,
+    SystemMessagePromptTemplate,
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate
+} from "langchain/prompts";
 import {useMemoizedFn} from "ahooks/lib";
-import {LLMChain} from "langchain/chains";
+import {ConversationChain,LLMChain} from "langchain/chains";
 
-const memory = new ConversationSummaryMemory({
-    memoryKey: "chat_history",
-    llm: new ChatOpenAI({ modelName: "gpt-3.5-turbo-16k", temperature: 0, openAIApiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY }),
-});
+const memory = new BufferWindowMemory({ k: 6 });
+
+const systemMessage = SystemMessagePromptTemplate.fromTemplate("你是一个能够处理javascript代码的助手。");
+const humanMessage = HumanMessagePromptTemplate.fromTemplate("{code}");
+const chatPrompt = ChatPromptTemplate.fromPromptMessages([systemMessage, humanMessage]);
 
 const model = new ChatOpenAI({
     modelName:'gpt-3.5-turbo-16k',
+    temperature: 0.7,
+    frequency_penalty: 0.2,
+    presence_penalty: 0.2,
     openAIApiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY
 });
-const prompt = PromptTemplate.fromTemplate(`The following is a friendly conversation between a human and an AI. The AI is a helpful assistant that explains JavaScript code. Current conversation: {chat_history} Human: {input} AI:`);
-const chain = new LLMChain({ llm: model, prompt, memory });
+const chain = new LLMChain({ llm: model, memory, prompt: chatPrompt });
 
 const Chat = (props,ref)=>{
     const messagesEndRef = useRef()
@@ -35,7 +43,7 @@ const Chat = (props,ref)=>{
     const signalRef = useRef()
 
     const send = useMemoizedFn((message)=>{
-        signalRef.current = new AbortController().signal
+        signalRef.current = new AbortController()
         setHumanMsgs([
             ...humanMsgs,
             {
@@ -46,9 +54,9 @@ const Chat = (props,ref)=>{
         setTyping(true)
         inputRef.current.value = ''
         chain.call({
-            input: message,
-            signal: signalRef.current
-        }).then(res=>{
+            code: message,
+            signal: signalRef.current?.signal
+        }).then((res)=>{
             setAiMsgs([
                 ...aiMsgs,
                 {
@@ -63,7 +71,11 @@ const Chat = (props,ref)=>{
 
     useImperativeHandle(ref,()=>{
         return {
-            send
+            send,
+            clear(){
+                setAiMsgs([])
+                setHumanMsgs([])
+            }
         }
     })
 
@@ -94,17 +106,6 @@ const Chat = (props,ref)=>{
                 <div className="bottom-bar">
 
                     <div className="chat">
-                        {/* <Input type="text" value={question} onChange={inputQuestion} onEnterPress={directChat} placeholder="开始提问吧..." enterkeyhint="done" maxLength={300} autoFocus clearable /> */}
-                        {/*<TextArea antdProps={{*/}
-                        {/*    placeholder:'开始提问吧...',*/}
-                        {/*    value: question,*/}
-                        {/*    onChange:inputQuestion,*/}
-                        {/*    rows:1,*/}
-                        {/*    maxLength:30000,*/}
-                        {/*    autoSize:{ minRows: 1, maxRows: 20 },*/}
-                        {/*    showCount: true,*/}
-                        {/*    autoFocus: false*/}
-                        {/*}} onKeyDown={onKeyDown}/>*/}
                         <div className={'textareaContainer'}>
                             <TextareaAutosize ref={inputRef} onKeyDown={onKeyDown} placeholder={ typing ? 'loading...' : '请输入你的问题,shift+enter换行'} disabled={typing}/>
                             <Whether value={typing}>

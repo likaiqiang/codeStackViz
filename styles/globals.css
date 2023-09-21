@@ -63,6 +63,16 @@ html{
   display: flex;
   flex-direction: column;
   width: 0;
+  position: relative;
+}
+.codeView .chat-icon{
+  position: absolute;
+  right:30px;
+  top: 50%;
+  font-size: 25px;
+  transform: translateY(-50%);
+  color: white;
+  cursor: pointer;
 }
 .codeExplainText{
   /*background-color: azure;*/
@@ -289,4 +299,7 @@ dd {
 }
 .myInlineDecoration {
   background-color: yellow;
+}
+.MuiPaper-root{
+  width: 25%;
 }

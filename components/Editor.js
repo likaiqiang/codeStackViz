@@ -12,7 +12,7 @@ function isMemberFunction({match,editor,keyword}) {
 let oldDecorations = []
 
 const EditorComponent = (props,ref)=>{
-    const {code,onExplainClick = ()=>{},codeType} = props
+    const {code,onEditorAction = ()=>{},codeType} = props
     const selectCodeRef = useRef()
     const editorRef = useRef()
 
@@ -51,6 +51,14 @@ const EditorComponent = (props,ref)=>{
             }
         }
     }
+    const onActionRun = ({editor, cb=()=>{}})=>{
+        const selection = editor.getSelection();
+        const selectedCode = editor.getModel().getValueInRange(selection)
+
+        if(!selectedCode) return null
+        selectCodeRef.current = selectedCode
+        cb(selectedCode)
+    }
 
     const handleEditorDidMount = (editor, monaco)=>{
         editorRef.current = editor
@@ -63,22 +71,61 @@ const EditorComponent = (props,ref)=>{
             contextMenuGroupId: "navigation",
             // 动作执行时调用的函数
             run: async function (editor) {
-                const selection = editor.getSelection();
-                const selectedCode = editor.getModel().getValueInRange(selection)
-
-                if(!selectedCode) return null
-                selectCodeRef.current = selectedCode
-
-                onExplainClick(selectedCode)
+                onActionRun({
+                    editor,
+                    cb(code){
+                        onEditorAction({
+                            type:'explain',
+                            code
+                        })
+                    }
+                })
 
             },
         });
-        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_X, function() {
-            // 执行你的代码
-            if(selectCodeRef.current){
-                onExplainClick(selectCodeRef.current)
-            }
-        })
+        editor.addAction({
+            // 动作的唯一标识符
+            id: "simplify code",
+            // 动作在菜单中显示的文本
+            label: "simplify code",
+            // 动作在菜单中显示的图标
+            contextMenuGroupId: "navigation",
+            // 动作执行时调用的函数
+            run: async function (editor) {
+                onActionRun({
+                    editor,
+                    cb(code){
+                        onEditorAction({
+                            type:'simplify',
+                            code
+                        })
+                    }
+                })
+
+            },
+        });
+
+        editor.addAction({
+            // 动作的唯一标识符
+            id: "comment code",
+            // 动作在菜单中显示的文本
+            label: "comment code",
+            // 动作在菜单中显示的图标
+            contextMenuGroupId: "navigation",
+            // 动作执行时调用的函数
+            run: async function (editor) {
+                onActionRun({
+                    editor,
+                    cb(code){
+                        onEditorAction({
+                            type:'comment',
+                            code
+                        })
+                    }
+                })
+
+            },
+        });
 
     }
     useImperativeHandle(ref,()=>{
@@ -95,7 +142,7 @@ const EditorComponent = (props,ref)=>{
     return (
         <Editor
             width={'100%'}
-            height={'60%'}
+            height={'100%'}
             theme="vs-dark"
             defaultLanguage="javascript" // 编辑器的默认语言
             defaultValue={'// 点击svg图选择节点'} // 编辑器的默认值

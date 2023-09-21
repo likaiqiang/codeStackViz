@@ -11,12 +11,14 @@ import {useImmer} from "use-immer";
 import Chat from "@/components/Chat";
 import hotkeys from 'hotkeys-js';
 import 'bootstrap-icons/font/bootstrap-icons.min.css'
-import {renderMaxLevel as defaultRenderMaxLevel} from "@/utils/client";
 import Settings from "@/components/Settings";
 import {getRecommendBundles, getStatus} from "@/api";
 import ReactDOM from "react-dom";
 import PageContext from '@/context/index'
 import CustomModal from "@/components/CustomModal";
+import Drawer from '@mui/material/Drawer';
+import { makeStyles } from '@material-ui/core/styles';
+const useStyles = makeStyles({ root: { width: '25%', }, });
 
 
 export default function Home(props) {
@@ -29,9 +31,15 @@ export default function Home(props) {
     const [tasks,setTasks] = useState([])
     const [recommend, setRecommend] = useState([])
 
+    const drawerClasses = useStyles();
+
     const [history, setHistory] = useImmer({
         list: [],
         index: -1
+    })
+    const [chatDrawer,setChatDrawer] = useImmer({
+        isOpen: false,
+        onOpen: ()=>{}
     })
     const modalRef = useRef()
 
@@ -68,16 +76,40 @@ export default function Home(props) {
         return id
     }
 
-    const explainCode = (code) => {
+    const onCode = (code, beforeSend=()=>{})=>{
         const {current: chat} = chatRef
         if (code) {
-            chat.send(
-                "Please explain the following JavaScript code: \n" +
+            setChatDrawer(draft => {
+                draft.isOpen = true
+            })
+            chat.send(beforeSend(code))
+        }
+    }
+
+    const explainCode = (code) => {
+        onCode(code,()=>{
+            return "/code_explain \n" +
                 "\`\`\`javascript \n" +
                 code + '\n' +
                 "\`\`\`"
-            )
-        }
+        })
+    }
+    const simplifyCode= (code)=>{
+        onCode(code,()=>{
+            return "/code_simplify \n" +
+                "\`\`\`javascript \n" +
+                code + '\n' +
+                "\`\`\`"
+        })
+
+    }
+    const commentCode = code=>{
+        onCode(code,()=>{
+            return "/code_comment \n" +
+                "\`\`\`javascript \n" +
+                code + '\n' +
+                "\`\`\`"
+        })
     }
 
     const configRef = useRef()
@@ -193,10 +225,26 @@ export default function Home(props) {
                     }}
                 />
                 <div className={'codeView'}>
-                    <CodeEditor ref={codeEditorRef} code={code} onExplainClick={explainCode}/>
-                    <div className={'codeExplainText'}>
-                        <Chat ref={chatRef}/>
-                    </div>
+                    <CodeEditor
+                        ref={codeEditorRef}
+                        code={code}
+                        onEditorAction={({type,code})=>{
+                            if(type === 'explain'){
+                                explainCode(code)
+                            }
+                            if(type === 'simplify'){
+                                simplifyCode(code)
+                            }
+                            if(type === 'comment'){
+                                commentCode(code)
+                            }
+                        }}
+                    />
+                    <i className="bi bi-chat-dots chat-icon" onClick={()=>{
+                        setChatDrawer(draft => {
+                            draft.isOpen = true
+                        })
+                    }}/>
                 </div>
                 {
                     ReactDOM.createPortal(
@@ -223,6 +271,28 @@ export default function Home(props) {
                 {
                     ReactDOM.createPortal(
                         <CustomPopper ref={popperRef}/>,
+                        document.body
+                    )
+                }
+                {
+                    ReactDOM.createPortal(
+                        <Drawer
+                            anchor={'right'}
+                            open={chatDrawer.isOpen}
+                            classes={drawerClasses}
+                            onClose={()=>{
+                                setChatDrawer(draft => {
+                                    draft.isOpen = false
+                                })
+                            }}
+                            ModalProps={{
+                                keepMounted: true
+                            }}
+                        >
+                            <div className={'codeExplainText'}>
+                                <Chat ref={chatRef}/>
+                            </div>
+                        </Drawer>,
                         document.body
                     )
                 }
