@@ -1,4 +1,5 @@
 import {useState} from 'react'
+import {emitter} from '@/mitt/index'
 export function useLocalStorage(key, initialValue) {
     // State to store our value
     // Pass initial state function to useState so logic is only executed once
@@ -29,6 +30,7 @@ export function useLocalStorage(key, initialValue) {
             // Save to local storage
             if (typeof window !== "undefined") {
                 window.localStorage.setItem(key, JSON.stringify(valueToStore));
+                emitter.emit(key, valueToStore)
             }
         } catch (error) {
             // A more advanced implementation would handle the error case

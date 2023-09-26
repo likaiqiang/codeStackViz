@@ -2,39 +2,25 @@ import Whether from "@/components/Whether";
 import {DownlandOutline} from 'antd-mobile-icons'
 import Messages from "@/components/Messages";
 import TextareaAutosize from 'react-textarea-autosize';
-import {useRef, useState,forwardRef,useImperativeHandle} from "react";
-import {ChatOpenAI} from "langchain/chat_models/openai";
-import {BufferWindowMemory } from "langchain/memory";
-import {
-    PromptTemplate,
-    SystemMessagePromptTemplate,
-    ChatPromptTemplate,
-    HumanMessagePromptTemplate
-} from "langchain/prompts";
+import {useRef, useState, forwardRef, useImperativeHandle, useEffect} from "react";
 import {useMemoizedFn} from "ahooks/lib";
-import {ConversationChain,LLMChain} from "langchain/chains";
+import {chain as ChatGptChain} from './openai'
+import {chain as ErnieChain} from './ernie'
+import ReactDOM from "react-dom";
+import {Snackbar} from "@mui/material";
+import {useImmer} from "use-immer";
 
-const memory = new BufferWindowMemory({ k: 6 });
-
-const systemMessage = SystemMessagePromptTemplate.fromTemplate("你是一个能够处理javascript代码的助手。");
-const humanMessage = HumanMessagePromptTemplate.fromTemplate("{code}");
-const chatPrompt = ChatPromptTemplate.fromPromptMessages([systemMessage, humanMessage]);
-
-const model = new ChatOpenAI({
-    modelName:'gpt-3.5-turbo-16k',
-    temperature: 0.7,
-    frequency_penalty: 0.2,
-    presence_penalty: 0.2,
-    openAIApiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY
-});
-const chain = new LLMChain({ llm: model, memory, prompt: chatPrompt });
 
 const Chat = (props,ref)=>{
     const messagesEndRef = useRef()
     const [typing,setTyping] = useState(false)
-
     const [aiMsgs,setAiMsgs] = useState([])
     const [humanMsgs, setHumanMsgs] = useState([])
+    const [toast, setToast] = useImmer({
+        isOpen: false,
+        message: '',
+        duration: 3000
+    })
 
     const onKeyDown = useMemoizedFn((e)=>{
         if(e.keyCode === 13) send(e.target.value)
@@ -43,6 +29,7 @@ const Chat = (props,ref)=>{
     const signalRef = useRef()
 
     const send = useMemoizedFn((message)=>{
+
         signalRef.current = new AbortController()
         setHumanMsgs([
             ...humanMsgs,
@@ -53,6 +40,8 @@ const Chat = (props,ref)=>{
         ])
         setTyping(true)
         inputRef.current.value = ''
+        const chain = props.aiConfig.type === 'chatgpt' ? ChatGptChain: ErnieChain
+
         chain.call({
             code: message,
             signal: signalRef.current?.signal
@@ -64,6 +53,11 @@ const Chat = (props,ref)=>{
                     timestamp: Date.now()
                 }
             ])
+        }).catch(()=>{
+            setToast(draft => {
+                draft.isOpen = true
+                draft.message = 'request failed, please try again'
+            })
         }).finally(()=>{
             setTyping(false)
         })
@@ -86,7 +80,7 @@ const Chat = (props,ref)=>{
             <div className="chatbox">
                 <div className="top-bar">
                     <div className="name">
-                        chat bot
+                        {props.aiConfig.label}
                     </div>
                     <div style={{fontSize:'2em'}}>
                         <DownlandOutline/>
@@ -111,14 +105,35 @@ const Chat = (props,ref)=>{
                             <Whether value={typing}>
                                 <div className='cancel' onClick={()=>{
                                     signalRef.current?.abort()
+                                    setTyping(false)
                                 }}>
-                                    取消
+                                    cancel
                                 </div>
                             </Whether>
                         </div>
                     </div>
                 </div>
             </div>
+            {
+                ReactDOM.createPortal(
+                    <Snackbar
+                        anchorOrigin={{
+                            vertical: 'top',
+                            horizontal: 'center',
+                        }}
+                        open={toast.isOpen}
+                        onClose={()=>{
+                            setToast(draft => {
+                                draft.isOpen = false
+                                draft.message = ''
+                            })
+                        }}
+                        autoHideDuration={toast.duration || 3000}
+                        message={toast.message}
+                    />,
+                    document.body
+                )
+            }
         </div>
     )
 }

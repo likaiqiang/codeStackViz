@@ -1,0 +1,47 @@
+diff --git a/node_modules/langchain/dist/chat_models/baiduwenxin.js b/node_modules/langchain/dist/chat_models/baiduwenxin.js
+index efb4c39..c6d63e6 100644
+--- a/node_modules/langchain/dist/chat_models/baiduwenxin.js
++++ b/node_modules/langchain/dist/chat_models/baiduwenxin.js
+@@ -51,6 +51,7 @@ export class ChatBaiduWenxin extends BaseChatModel {
+     }
+     constructor(fields) {
+         super(fields ?? {});
++        this.baseUrl = 'https://aip.baidubce.com/'
+         Object.defineProperty(this, "lc_serializable", {
+             enumerable: true,
+             configurable: true,
+@@ -140,16 +141,19 @@ export class ChatBaiduWenxin extends BaseChatModel {
+         this.topP = fields?.topP ?? this.topP;
+         this.penaltyScore = fields?.penaltyScore ?? this.penaltyScore;
+         this.modelName = fields?.modelName ?? this.modelName;
++        this.getPathUrl = fields?.getPathUrl
+         if (this.modelName === "ERNIE-Bot") {
+-            this.apiUrl =
+-                "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions";
++            const productionUrlPath = 'rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions'
++            this.apiUrl =  typeof this.getPathUrl === 'function' ? this.getPathUrl({moduleName: this.modelName, subPath: productionUrlPath, baseUrl: this.baseUrl}) : `${this.baseUrl + productionUrlPath}`
++
+             this.temperature = this.temperature ?? 0.95;
+             this.topP = this.topP ?? 0.8;
+             this.penaltyScore = this.penaltyScore ?? 1.0;
+         }
+         else if (this.modelName === "ERNIE-Bot-turbo") {
+-            this.apiUrl =
+-                "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/eb-instant";
++            const productionUrlPath = 'rpc/2.0/ai_custom/v1/wenxinworkshop/chat/eb-instant'
++            this.apiUrl =  typeof this.getPathUrl === 'function' ? this.getPathUrl({moduleName: this.modelName, subPath: productionUrlPath, baseUrl: this.baseUrl}) : `${this.baseUrl + productionUrlPath}`
++
+             // Validate the input
+             if (this.temperature) {
+                 throw new Error("Temperature is not supported forERNIE-Bot-turbo model");
+@@ -166,7 +170,9 @@ export class ChatBaiduWenxin extends BaseChatModel {
+         }
+     }
+     async getAccessToken(options) {
+-        const url = `https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=${this.baiduApiKey}&client_secret=${this.baiduSecretKey}`;
++        const productionUrlPath = 'oauth/2.0/token'
++        const pathUrl =  typeof this.getPathUrl === 'function' ? this.getPathUrl({moduleName: this.modelName, subPath: productionUrlPath, baseUrl: this.baseUrl}) : `${this.baseUrl + productionUrlPath}`
++        const url = `${pathUrl}?grant_type=client_credentials&client_id=${this.baiduApiKey}&client_secret=${this.baiduSecretKey}`;
+         const response = await fetch(url, {
+             method: "POST",
+             headers: {

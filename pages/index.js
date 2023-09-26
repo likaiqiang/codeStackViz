@@ -5,10 +5,10 @@ import {
 } from "cg";
 import {filterJsonByEntry, generateSplicedCode} from '@/cg/common'
 import Graphviz from "@/components/Graphviz";
-import CodeEditor from '@/components/Editor'
+import CodeEditor from '@/components/editor/Component'
 import CustomPopper from "@/components/Popper";
 import {useImmer} from "use-immer";
-import Chat from "@/components/Chat";
+import Chat from "@/components/chat/Component";
 import hotkeys from 'hotkeys-js';
 import 'bootstrap-icons/font/bootstrap-icons.min.css'
 import Settings from "@/components/Settings";
@@ -41,6 +41,7 @@ export default function Home(props) {
         isOpen: false,
         onOpen: ()=>{}
     })
+    const [aiConfig, setAiConfig] = useState({})
     const modalRef = useRef()
 
     const graphvizRef = useRef()
@@ -239,6 +240,7 @@ export default function Home(props) {
                                 commentCode(code)
                             }
                         }}
+                        onAiConfigChange={setAiConfig}
                     />
                     <i className="bi bi-chat-dots chat-icon" onClick={()=>{
                         setChatDrawer(draft => {
@@ -290,7 +292,7 @@ export default function Home(props) {
                             }}
                         >
                             <div className={'codeExplainText'}>
-                                <Chat ref={chatRef}/>
+                                <Chat ref={chatRef} aiConfig={aiConfig}/>
                             </div>
                         </Drawer>,
                         document.body

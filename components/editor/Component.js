@@ -1,5 +1,12 @@
 import React, {useEffect, useImperativeHandle, useRef} from "react";
 import Editor from "@monaco-editor/react";
+import CustomModal from "@/components/CustomModal";
+import {useImmer} from "use-immer";
+import {FormControlLabel, RadioGroup, Radio} from "@mui/material";
+import {createPortal} from 'react-dom'
+import {useLocalStorage} from "@/utils/client";
+import {aiConfig} from "@/components/chat/config";
+import {emitter} from "@/mitt";
 
 function isMemberFunction({match,editor,keyword}) {
 
@@ -11,10 +18,15 @@ function isMemberFunction({match,editor,keyword}) {
 
 let oldDecorations = []
 
+
 const EditorComponent = (props,ref)=>{
     const {code,onEditorAction = ()=>{},codeType} = props
+    const [cacheConfig, setCacheConfig] = useLocalStorage('chat_config', aiConfig[0])
+    const aiModalRef = useRef()
+    const selectConfig = aiConfig.find(config=>config.type === cacheConfig.type) || aiConfig[0]
     const selectCodeRef = useRef()
     const editorRef = useRef()
+
 
     const scrollToDef = ()=>{
         if(code.type === 'class'){
@@ -62,6 +74,8 @@ const EditorComponent = (props,ref)=>{
 
     const handleEditorDidMount = (editor, monaco)=>{
         editorRef.current = editor
+
+
         editor.addAction({
             // 动作的唯一标识符
             id: "explain code",
@@ -127,6 +141,18 @@ const EditorComponent = (props,ref)=>{
             },
         });
 
+        editor.addAction({
+            id: "choose ai engine",
+            // 动作在菜单中显示的文本
+            label: "choose ai engine",
+            // 动作在菜单中显示的图标
+            contextMenuGroupId: "navigation",
+            run(){
+                aiModalRef.current.show()
+            }
+        })
+
+
     }
     useImperativeHandle(ref,()=>{
         return {
@@ -139,17 +165,53 @@ const EditorComponent = (props,ref)=>{
             editor.revealLineInCenter(1)
         }
     }, [code.value]);
+    useEffect(() => {
+        props.onAiConfigChange?.(cacheConfig)
+    }, [cacheConfig]);
+
     return (
-        <Editor
-            width={'100%'}
-            height={'100%'}
-            theme="vs-dark"
-            defaultLanguage="javascript" // 编辑器的默认语言
-            defaultValue={'// 点击svg图选择节点'} // 编辑器的默认值
-            value={code.value}
-            className={'codeEdit'}
-            onMount={handleEditorDidMount}
-        />
+        <>
+            <Editor
+                width={'100%'}
+                height={'100%'}
+                theme="vs-dark"
+                defaultLanguage="javascript" // 编辑器的默认语言
+                defaultValue={'// 点击svg图选择节点'} // 编辑器的默认值
+                value={code.value}
+                className={'codeEdit'}
+                onMount={handleEditorDidMount}
+            />
+            {
+                createPortal(
+                    <CustomModal
+                        ref={aiModalRef}
+                        onRequestClose={()=>{
+                            aiModalRef.current.hide()
+                        }}
+                    >
+                        <RadioGroup
+                            aria-label="options"
+                            name="options"
+                            value={selectConfig.type}
+                            onChange={e=>{
+                                const type = e.target.value
+                                const newConfig = aiConfig.find(config=>config.type === type) || aiConfig[0]
+                                setCacheConfig(newConfig)
+                            }}
+                        >
+                            {
+                                aiConfig.map((config)=>{
+                                    return (
+                                        <FormControlLabel key={config.type} value={config.type} control={<Radio />} label={config.label} />
+                                    )
+                                })
+                            }
+                        </RadioGroup>
+                    </CustomModal>,
+                    document.body
+                )
+            }
+        </>
     )
 }
 export default React.forwardRef(EditorComponent)
