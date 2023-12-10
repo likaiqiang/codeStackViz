@@ -27,7 +27,7 @@ const promiseAllWithConcurrency = (task = [],option = {})=>{
     },Promise.resolve())
 }
 
-const delay = (timer= 60000)=>{
+const delay = (timer= 600000)=>{
     return new Promise((resolve,reject)=>{
         try{
             setTimeout(resolve,timer)

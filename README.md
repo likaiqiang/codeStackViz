@@ -1,41 +1,39 @@
-# Project Overview
+## 项目概述
 
-This project is a website tool designed to assist developers in reading source code. It can analyze any JavaScript or TypeScript project. You can search for a suitable GitHub repository and select an entry file. It will bundle the code and analyze global functions with a call stack exceeding three levels. Additionally, it provides code restoration and interpretation features, allowing users to gain a deeper understanding of the code execution process.
+本项目是一个用于帮助开发人员阅读源码的网站工具。它能够分析任意JavaScript或TypeScript项目，你可以搜索合适的github repo并选择入口文件，它会将代码打包，并分析出调用栈超过三层的全局函数。此外，它还提供了代码还原和解释功能，允许用户深入了解源代码的执行过程。
 
-## Key Features
+## 功能特点
 
-### Completed Features
+### 已完成的功能
 
-- **Code Bundling**: The project can take an entry file and use Rollup to bundle the entire project's code.
+- **代码打包**: 项目可以接受一个入口文件，并使用Rollup来打包整个项目的代码。
 
-- **Call Stack Analysis**: The project can analyze the bundled code, identify global functions with call stacks exceeding three levels, and generate corresponding reports.
+- **调用栈分析**: 该项目可以分析捆绑的代码，识别出全局函数的调用栈，并生成相应的报告。
 
-- **Code Restoration**: Users can click on nodes in the report to restore the code and view the implementation of specific functions.
+- **代码还原**: 用户可以通过点击报告中的节点来还原代码，以查看特定函数的实现。
 
-- **Code Interpretation**: The project integrates ChatGPT, allowing users to get code explanations and comments on top of code restoration to aid in understanding code logic.
+- **代码解释**: 项目集成了ChatGPT，允许用户在代码还原的基础上获取代码解释和注释，以帮助理解代码的逻辑。
 
-### Work in Progress
+### 正在进行中的任务
 
-- **Improved Interactivity**
+- **更好的交互**
 
-- **Enhanced Bundling Performance**
+- **更好的合并与分析代码性能**
 
-## Getting Started
+## 快速开始
 
-### Usage
+### 使用
 
-1. Visit the [website](https://daxigua.site/)
+1. 访问[网站](https://daxigua.site/)
 
-2. Configure the entry file: Search for a GitHub repository on the website and select the entry file.
+2. 配置入口文件：在网站上搜索github repo并选择入口文件。
 
-3. Run the analysis: Initiate the analysis process, and the tool will automatically bundle and analyze the code.
+3. 运行分析：启动分析过程，工具将自动执行代码打包和分析。
 
-4. View the report: After analysis is complete, you can examine the call graph, restore the code, and use ChatGPT to explain the code.
+4. 查看报告：分析完成后，您可以查看call graph，还原代码，并使用ChatGPT解释代码。
 
-## License
 
-This project is licensed under the [License Name]. For more details, please refer to the [LICENSE](https://github.com/likaiqiang/codeStackViz/blob/main/LICENSE) file.
+## 许可证
 
----
+本项目根据 [许可证名称] 许可证进行许可。有关详细信息，请参阅 [LICENSE](https://github.com/likaiqiang/codeStackViz/blob/main/LICENSE) 文件。
 
-[中文](https://github.com/likaiqiang/codeStackViz/blob/main/README_CN.md)

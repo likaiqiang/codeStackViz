@@ -60,7 +60,7 @@ const SelectEntryModal = (props,ref)=>{
                                 modalManager.closeAllModals()
                             }
                         }}>
-                            <ListItemText primary={item.name + (item.maxLevel === 1 ? '【only one level】' : '')} />
+                            <ListItemText primary={item.name + (item.maxLevel === 1 ? '【only one level】' : `【level: ${item.maxLevel}】`)} />
                         </ListItem>
                     ))}
                 </List>

@@ -51,5 +51,5 @@ export const waitForPromise = async ({promise,timeout=1000,waitCallBack=()=>{}})
         throw err
     }
 }
-export const renderMaxLevel = 3
+export const renderMaxLevel = 1
 
