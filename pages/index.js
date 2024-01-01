@@ -180,6 +180,7 @@ export default function Home(props) {
     }
     const popperRef = useRef()
     const chatRef = useRef()
+    const winWidth = document.documentElement.clientWidth
     return (
         <div className={'codeViewContainer'}>
             <PageContext.Provider value={{
@@ -289,7 +290,7 @@ export default function Home(props) {
                                 keepMounted: true
                             }}
                         >
-                            <div className={'codeExplainText'}>
+                            <div className={'codeExplainText'} style={{width: winWidth / 4 +  'px'}}>
                                 <Chat ref={chatRef}/>
                             </div>
                         </Drawer>,
