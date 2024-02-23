@@ -21,11 +21,13 @@ const humanMessage = HumanMessagePromptTemplate.fromTemplate("{code}");
 const chatPrompt = ChatPromptTemplate.fromPromptMessages([systemMessage, humanMessage]);
 
 const model = new ChatOpenAI({
-    modelName:'gpt-3.5-turbo-16k',
+    modelName:'gpt-3.5-turbo-0125',
     temperature: 0.7,
     frequency_penalty: 0.2,
     presence_penalty: 0.2,
     openAIApiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY
+},{
+    baseURL: process.env.NEXT_PUBLIC_OPENAI_BASEURL
 });
 const chain = new LLMChain({ llm: model, memory, prompt: chatPrompt });
 
